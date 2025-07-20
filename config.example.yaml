@@ -1,0 +1,14 @@
+# Example configuration file for the weather application
+# Copy this file to config.yaml and fill in your actual values
+# The config.yaml file will not be tracked in git
+
+api:
+  openweather:
+    # Get your free API key from: https://openweathermap.org/api
+    key: "your_openweather_api_key_here"
+    
+# You can add other configuration options here
+# For example:
+# defaults:
+#   units: "metric"  # or "imperial" or "kelvin"
+#   city: "London"

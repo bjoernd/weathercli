@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(poetry init:*)",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(poetry run black:*)",
+      "Bash(poetry run isort:*)",
+      "Bash(poetry run:*)",
+      "Bash(poetry add:*)"
+    ],
+    "deny": []
+  }
+}
