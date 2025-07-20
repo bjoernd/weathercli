@@ -44,9 +44,7 @@ class TestConfig:
             "settings": {"timeout": 30, "retries": 3},
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = Path(f.name)
 
@@ -60,9 +58,7 @@ class TestConfig:
 
     def test_load_invalid_yaml_config(self):
         """Test loading an invalid YAML config file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: content:\n  - malformed")
             config_path = Path(f.name)
 
@@ -74,9 +70,7 @@ class TestConfig:
 
     def test_load_empty_yaml_config(self):
         """Test loading an empty YAML config file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("")
             config_path = Path(f.name)
 
@@ -90,9 +84,7 @@ class TestConfig:
         """Test get method with simple key."""
         config_data = {"simple_key": "simple_value"}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = Path(f.name)
 
@@ -110,9 +102,7 @@ class TestConfig:
             "level1": {"level2": {"level3": "deep_value"}, "simple": "value"}
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = Path(f.name)
 
@@ -121,9 +111,7 @@ class TestConfig:
             assert config.get("level1.level2.level3") == "deep_value"
             assert config.get("level1.simple") == "value"
             assert config.get("level1.nonexistent") is None
-            assert (
-                config.get("level1.level2.nonexistent", "default") == "default"
-            )
+            assert config.get("level1.level2.nonexistent", "default") == "default"
         finally:
             config_path.unlink()
 
@@ -131,9 +119,7 @@ class TestConfig:
         """Test get method with invalid nested path."""
         config_data = {"string_value": "not_a_dict"}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = Path(f.name)
 
@@ -143,9 +129,7 @@ class TestConfig:
         finally:
             config_path.unlink()
 
-    @patch.dict(
-        os.environ, {"OPENWEATHER_API_KEY": "env_api_key"}, clear=False
-    )
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "env_api_key"}, clear=False)
     def test_get_api_key_from_environment(self):
         """Test get_api_key returns environment variable when available."""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -160,9 +144,7 @@ class TestConfig:
         """
         config_data = {"api": {"openweather": {"key": "config_api_key"}}}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = Path(f.name)
 
@@ -172,16 +154,12 @@ class TestConfig:
         finally:
             config_path.unlink()
 
-    @patch.dict(
-        os.environ, {"OPENWEATHER_API_KEY": "env_api_key"}, clear=False
-    )
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "env_api_key"}, clear=False)
     def test_get_api_key_environment_takes_precedence(self):
         """Test that environment variable takes precedence over config file."""
         config_data = {"api": {"openweather": {"key": "config_api_key"}}}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = Path(f.name)
 
@@ -204,9 +182,7 @@ class TestConfig:
         """Test get_api_key with unknown service falls back to config file."""
         config_data = {"api": {"unknown_service": {"key": "unknown_api_key"}}}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = Path(f.name)
 
@@ -218,9 +194,7 @@ class TestConfig:
 
     def test_has_config_file_true(self):
         """Test has_config_file returns True when file exists."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump({}, f)
             config_path = Path(f.name)
 
