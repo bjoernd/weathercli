@@ -29,8 +29,7 @@ class WeatherService:
         """
         if not self.api_key:
             raise ValueError(
-                "API key is required. Set OPENWEATHER_API_KEY environment "
-                "variable."
+                "API key is required. Set OPENWEATHER_API_KEY environment " "variable."
             )
 
         params = {"q": city, "appid": self.api_key, "units": "metric"}

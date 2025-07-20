@@ -74,3 +74,7 @@ poetry add --group dev <package>  # Development dependency
 
 - Linting: after every code change, run a linter.
 - Testing: after every code change, run poetry testing and fix all failures.
+
+## Code Style Guidelines
+
+- When generating code, make sure that no line ever gets longer than 79 characters.

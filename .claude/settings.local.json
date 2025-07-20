@@ -9,7 +9,8 @@
       "Bash(poetry run black:*)",
       "Bash(poetry run isort:*)",
       "Bash(poetry run:*)",
-      "Bash(poetry add:*)"
+      "Bash(poetry add:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

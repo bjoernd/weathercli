@@ -17,17 +17,13 @@ def main(city: str) -> None:
     if not api_key:
         click.echo("Error: OpenWeather API key not found.")
         click.echo("Please set it in one of these ways:")
-        click.echo(
-            "1. Environment variable: export OPENWEATHER_API_KEY=your_key"
-        )
+        click.echo("1. Environment variable: export OPENWEATHER_API_KEY=your_key")
         click.echo("2. Config file (config.yaml):")
         click.echo("   api:")
         click.echo("     openweather:")
         click.echo("       key: your_api_key_here")
         click.echo("")
-        click.echo(
-            "Get your free API key from: https://openweathermap.org/api"
-        )
+        click.echo("Get your free API key from: https://openweathermap.org/api")
         raise click.Abort()
 
     weather_service = WeatherService(api_key)
