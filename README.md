@@ -1,6 +1,8 @@
 # Weather CLI
 
-A Python command-line weather application that fetches current weather data from OpenWeatherMap API with comprehensive debugging capabilities.
+A Python command-line weather application that fetches current weather data from OpenWeatherMap API.
+
+Written as a vibe coding project with [Claude Code](https://claude.ai/code).
 
 ## Features
 

@@ -35,6 +35,7 @@ class TestLocationService:
         assert result == (40.7128, -74.0060)
         mock_get.assert_called_once_with(
             "https://ipapi.co/json/",
+            params={},
             headers={"User-Agent": "weather-cli/1.0"},
             timeout=10,
         )

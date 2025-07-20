@@ -4,17 +4,16 @@ from typing import Dict, Optional, Tuple
 
 import requests
 
-from weather.logging_config import get_logger, timer
+from weather.base_service import BaseAPIService
+from weather.constants import IPAPI_BASE_URL, USER_AGENT
 
 
-class LocationService:
+class LocationService(BaseAPIService):
     """Service for getting current location via IP geolocation."""
 
     def __init__(self):
         """Initialize location service."""
-        self.base_url = "https://ipapi.co/json/"
-        self.logger = get_logger(__name__)
-        self.logger.debug("LocationService initialized")
+        super().__init__(IPAPI_BASE_URL)
 
     def get_current_location(self) -> Optional[Tuple[float, float]]:
         """
@@ -26,40 +25,21 @@ class LocationService:
         Raises:
             requests.RequestException: If API request fails
         """
-        self.logger.debug("Getting current location via IP geolocation")
+        location_data = self._make_request(
+            headers={"User-Agent": USER_AGENT}
+        )
 
-        with timer(self.logger, f"IP geolocation request to {self.base_url}"):
-            self.logger.debug(f"Making request to: {self.base_url}")
-            response = requests.get(
-                self.base_url,
-                headers={"User-Agent": "weather-cli/1.0"},
-                timeout=10,
-            )
-            self.logger.debug(f"Response status: {response.status_code}")
+        if location_data.get("error"):
+            error_msg = location_data.get("reason", "Unknown error")
+            raise ValueError(f"Location service error: {error_msg}")
 
-            response.raise_for_status()
+        latitude = location_data.get("latitude")
+        longitude = location_data.get("longitude")
 
-        with timer(self.logger, "location data parsing"):
-            location_data = response.json()
-            self.logger.debug(f"Location data received: {location_data}")
+        if latitude is None or longitude is None:
+            return None
 
-            # Check for error in response
-            if location_data.get("error"):
-                error_msg = location_data.get("reason", "Unknown error")
-                self.logger.debug(f"API returned error: {error_msg}")
-                raise ValueError(f"Location service error: {error_msg}")
-
-            # Extract coordinates
-            latitude = location_data.get("latitude")
-            longitude = location_data.get("longitude")
-
-            if latitude is None or longitude is None:
-                self.logger.debug("Missing latitude or longitude in response")
-                return None
-
-            coords = (float(latitude), float(longitude))
-            self.logger.debug(f"Parsed coordinates: {coords}")
-            return coords
+        return (float(latitude), float(longitude))
 
     def get_location_info(self) -> Optional[Dict[str, str]]:
         """
@@ -68,39 +48,20 @@ class LocationService:
         Returns:
             Dictionary containing location details or None if failed
         """
-        self.logger.debug("Getting detailed location info")
-
         try:
-            with timer(
-                self.logger, f"detailed location request to {self.base_url}"
-            ):
-                response = requests.get(
-                    self.base_url,
-                    headers={"User-Agent": "weather-cli/1.0"},
-                    timeout=10,
-                )
-                response.raise_for_status()
+            location_data = self._make_request(
+                headers={"User-Agent": USER_AGENT}
+            )
 
-            location_data = response.json()
-
-            # Check for error in response
             if location_data.get("error"):
-                error_msg = location_data.get("reason", "Unknown error")
-                self.logger.debug(f"API returned error: {error_msg}")
                 return None
 
-            # Extract useful location info
-            info = {
+            return {
                 "city": location_data.get("city", "Unknown"),
                 "region": location_data.get("region", "Unknown"),
                 "country": location_data.get("country_name", "Unknown"),
                 "country_code": location_data.get("country", "Unknown"),
                 "timezone": location_data.get("timezone", "Unknown"),
             }
-
-            self.logger.debug(f"Location info: {info}")
-            return info
-
-        except (requests.RequestException, ValueError, KeyError) as e:
-            self.logger.debug(f"Failed to get location info: {e}")
+        except (requests.RequestException, ValueError, KeyError):
             return None

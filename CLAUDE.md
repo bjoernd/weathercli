@@ -41,6 +41,7 @@ poetry run pytest                        # Run all tests (52 total)
 poetry run pytest tests/test_config.py   # Run single test file
 poetry run pytest tests/test_cli.py -v   # Run CLI tests with verbose output
 poetry run pytest tests/test_service.py  # Run WeatherService tests
+poetry run pytest tests/test_location.py # Run LocationService tests
 
 # Code formatting and linting (run after every code change)
 poetry run black .
@@ -57,12 +58,15 @@ poetry add --group dev <package>  # Development dependency
 
 - `src/weather/` - Main package source code
 - `src/weather/cli.py` - Command line interface entry point with Click commands
-- `src/weather/config.py` - Configuration management (YAML + env vars)
+- `src/weather/config.py` - Configuration management (YAML + env vars)  
 - `src/weather/service.py` - WeatherService for OpenWeatherMap API integration
+- `src/weather/location.py` - LocationService for IP-based geolocation
+- `src/weather/logging_config.py` - Centralized logging with UTC timestamps and timing
 - `tests/` - Comprehensive test suite (52 tests total)
   - `test_cli.py` - CLI functionality and error handling tests
   - `test_config.py` - Configuration system tests
   - `test_service.py` - WeatherService API integration tests
+  - `test_location.py` - LocationService geolocation tests
 - `config.example.yaml` - Template configuration file
 - `pyproject.toml` - Poetry configuration and dependencies
 
@@ -77,7 +81,10 @@ poetry add --group dev <package>  # Development dependency
 - Error handling: Comprehensive HTTP error codes and user-friendly messages
 - Weather data fetched from OpenWeatherMap API in metric units
 - Test coverage: All components have comprehensive unit tests with mocking
-- Three-layer architecture: CLI → Config/Service → External API
+- Four-layer architecture: CLI → Config/Service/Location → External APIs
+- Location resolution priority: `--here` flag → `--city` argument → default city → automatic current location
+- Debug mode provides comprehensive logging with file output and performance timing
+- IP-based geolocation via ipapi.co for automatic location detection
 
 ## Error Handling Guidelines
 

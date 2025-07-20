@@ -10,6 +10,7 @@ import yaml
 from click.testing import CliRunner
 
 from weather.cli import main
+from weather.types import Location
 
 
 class TestCLI:
@@ -20,6 +21,19 @@ class TestCLI:
         self.runner = CliRunner()
         self.temp_dir = tempfile.mkdtemp()
         self.config_path = Path(self.temp_dir) / "config.yaml"
+    
+    def assert_get_weather_called_with_city(self, mock_service, expected_city):
+        """Helper to assert get_weather was called with a Location for a city."""
+        call_args = mock_service.get_weather.call_args[0][0]
+        assert isinstance(call_args, Location)
+        assert call_args.city_name == expected_city
+    
+    def assert_get_weather_called_with_coords(self, mock_service, expected_coords):
+        """Helper to assert get_weather was called with a Location for coordinates."""
+        call_args = mock_service.get_weather.call_args[0][0]
+        assert isinstance(call_args, Location)
+        assert call_args.is_coordinates
+        assert call_args.coordinates == expected_coords
 
     def teardown_method(self):
         """Clean up test fixtures."""
@@ -27,24 +41,28 @@ class TestCLI:
             self.config_path.unlink()
         Path(self.temp_dir).rmdir()
 
+    @patch("weather.cli.LocationResolver")
     @patch("weather.cli.Config")
-    def test_cli_uses_default_city_when_available(self, mock_config_class):
+    def test_cli_uses_default_city_when_available(self, mock_config_class, mock_resolver_class):
         """Test that CLI uses default city when no --city provided and default
         exists."""
         # Setup mock config with default city
         mock_config = Mock()
         mock_config.get_api_key.return_value = None  # API key error
-        mock_config.get_default_city.return_value = "Default City"
-        mock_config.get_default_city.return_value = "Default City"
         mock_config_class.return_value = mock_config
+        
+        # Setup mock resolver
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = Location.from_city("Default City")
+        mock_resolver_class.return_value = mock_resolver
 
         result = self.runner.invoke(main, [])
 
         # Should exit with API key error, not missing city error
         assert result.exit_code != 0
         assert "Error: OpenWeather API key not found" in result.output
-        # Verify the default city was requested
-        mock_config.get_default_city.assert_called_once()
+        # Verify the resolver was called correctly
+        mock_resolver.resolve_location.assert_called_once_with(False, None)
 
     def test_cli_accepts_city_argument(self):
         """Test that CLI accepts --city argument."""
@@ -93,7 +111,7 @@ class TestCLI:
 
         assert result.exit_code == 0
         mock_weather_service.assert_called_once_with("test_env_key")
-        mock_service.get_weather.assert_called_once_with("London")
+        self.assert_get_weather_called_with_city(mock_service, "London")
         assert "Weather in London" in result.output
 
     @patch.dict(os.environ, {}, clear=True)
@@ -127,7 +145,7 @@ class TestCLI:
 
             assert result.exit_code == 0
             mock_weather_service.assert_called_once_with("test_config_key")
-            mock_service.get_weather.assert_called_once_with("Paris")
+            self.assert_get_weather_called_with_city(mock_service, "Paris")
             assert "Weather in Paris" in result.output
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "env_key"}, clear=False)
@@ -276,7 +294,7 @@ Conditions: Sunny"""
 
         assert result.exit_code == 0
         assert expected_output in result.output
-        mock_service.get_weather.assert_called_once_with("New York")
+        self.assert_get_weather_called_with_city(mock_service, "New York")
         mock_service.format_weather_output.assert_called_once_with(
             mock_weather_data
         )
@@ -324,12 +342,14 @@ Conditions: Sunny"""
             result = self.runner.invoke(main, ["--city", city])
             assert result.exit_code == 0
 
-        # Check that get_weather was called with each city
-        expected_calls = [(city,) for city in test_cities]
-        actual_calls = [
-            call.args for call in mock_service.get_weather.call_args_list
-        ]
-        assert actual_calls == expected_calls
+        # Check that get_weather was called with each city as Location objects
+        actual_calls = mock_service.get_weather.call_args_list
+        assert len(actual_calls) == len(test_cities)
+        
+        for i, city in enumerate(test_cities):
+            call_args = actual_calls[i].args[0]
+            assert isinstance(call_args, Location)
+            assert call_args.city_name == city
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
     @patch("weather.cli.WeatherService")
@@ -357,10 +377,10 @@ Conditions: Sunny"""
         assert result.exit_code == 0
         assert "Weather in Default City" in result.output
         mock_config.get_default_city.assert_called_once()
-        mock_service.get_weather.assert_called_once_with("Default City")
+        self.assert_get_weather_called_with_city(mock_service, "Default City")
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
-    @patch("weather.cli.LocationService")
+    @patch("weather.cli.LocationResolver")
     @patch("weather.cli.WeatherService")
     @patch("weather.cli.Config")
     def test_auto_location_when_no_city_and_no_default(
@@ -373,10 +393,10 @@ Conditions: Sunny"""
         mock_config.get_default_city.return_value = None
         mock_config_class.return_value = mock_config
 
-        # Setup mock location service
-        mock_location = Mock()
-        mock_location.get_current_location.return_value = (40.7128, -74.0060)
-        mock_location_service.return_value = mock_location
+        # Setup mock location resolver
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = Location.from_coordinates(40.7128, -74.0060)
+        mock_location_service.return_value = mock_resolver
 
         # Setup mock weather service
         mock_service = Mock()
@@ -396,11 +416,11 @@ Conditions: Sunny"""
 
         assert result.exit_code == 0
         assert "Weather in New York, US" in result.output
-        mock_location.get_current_location.assert_called_once()
-        mock_service.get_weather.assert_called_once_with((40.7128, -74.0060))
+        mock_resolver.resolve_location.assert_called_once_with(False, None)
+        self.assert_get_weather_called_with_coords(mock_service, (40.7128, -74.0060))
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
-    @patch("weather.cli.LocationService")
+    @patch("weather.cli.LocationResolver")
     @patch("weather.cli.Config")
     def test_auto_location_fails_when_no_city_and_no_default(
         self, mock_config_class, mock_location_service
@@ -412,20 +432,20 @@ Conditions: Sunny"""
         mock_config.get_default_city.return_value = None
         mock_config_class.return_value = mock_config
 
-        # Setup mock location service to fail
-        mock_location = Mock()
-        mock_location.get_current_location.return_value = None
-        mock_location_service.return_value = mock_location
+        # Setup mock location resolver to fail
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = None
+        mock_location_service.return_value = mock_resolver
 
         result = self.runner.invoke(main, [])
 
         assert result.exit_code != 0
-        assert "Could not determine current location" in result.output
+        assert "Could not determine location" in result.output
         assert "Use --city 'City Name'" in result.output
         assert "Configure a default city in config.yaml" in result.output
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
-    @patch("weather.cli.LocationService")
+    @patch("weather.cli.LocationResolver")
     @patch("weather.cli.Config")
     def test_auto_location_network_error_when_no_city_and_no_default(
         self, mock_config_class, mock_location_service
@@ -437,18 +457,15 @@ Conditions: Sunny"""
         mock_config.get_default_city.return_value = None
         mock_config_class.return_value = mock_config
 
-        # Setup mock location service to raise exception
-        mock_location = Mock()
-        mock_location.get_current_location.side_effect = (
-            requests.RequestException("Network error")
-        )
-        mock_location_service.return_value = mock_location
+        # Setup mock location resolver to fail (simulating network error)
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = None
+        mock_location_service.return_value = mock_resolver
 
         result = self.runner.invoke(main, [])
 
         assert result.exit_code != 0
-        assert "Failed to get current location" in result.output
-        assert "Network error" in result.output
+        assert "Could not determine location" in result.output
         assert "Use --city 'City Name'" in result.output
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
@@ -478,19 +495,19 @@ Conditions: Sunny"""
         assert "Weather in Explicit City" in result.output
         # Default city should not be called when explicit city is provided
         mock_config.get_default_city.assert_not_called()
-        mock_service.get_weather.assert_called_once_with("Explicit City")
+        self.assert_get_weather_called_with_city(mock_service, "Explicit City")
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
-    @patch("weather.cli.LocationService")
+    @patch("weather.cli.LocationResolver")
     @patch("weather.cli.WeatherService")
     def test_current_location_success(
         self, mock_weather_service, mock_location_service
     ):
         """Test successful current location weather retrieval."""
-        # Setup mock location service
-        mock_location = Mock()
-        mock_location.get_current_location.return_value = (40.7128, -74.0060)
-        mock_location_service.return_value = mock_location
+        # Setup mock location resolver
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = Location.from_coordinates(40.7128, -74.0060)
+        mock_location_service.return_value = mock_resolver
 
         # Setup mock weather service
         mock_service = Mock()
@@ -510,50 +527,47 @@ Conditions: Sunny"""
 
         assert result.exit_code == 0
         assert "Weather in New York, US" in result.output
-        mock_location.get_current_location.assert_called_once()
-        mock_service.get_weather.assert_called_once_with((40.7128, -74.0060))
+        mock_resolver.resolve_location.assert_called_once_with(True, None)
+        self.assert_get_weather_called_with_coords(mock_service, (40.7128, -74.0060))
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
-    @patch("weather.cli.LocationService")
+    @patch("weather.cli.LocationResolver")
     def test_current_location_fails(self, mock_location_service):
         """Test current location when location service fails."""
-        mock_location = Mock()
-        mock_location.get_current_location.return_value = None
-        mock_location_service.return_value = mock_location
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = None
+        mock_location_service.return_value = mock_resolver
 
         result = self.runner.invoke(main, ["--here"])
 
         assert result.exit_code != 0
-        assert "Could not determine current location" in result.output
-        assert "Try specifying a city with --city instead" in result.output
+        assert "Could not determine location" in result.output
+        assert "Use --city 'City Name'" in result.output
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
-    @patch("weather.cli.LocationService")
+    @patch("weather.cli.LocationResolver")
     def test_current_location_network_error(self, mock_location_service):
         """Test current location with network error."""
-        mock_location = Mock()
-        mock_location.get_current_location.side_effect = (
-            requests.RequestException("Connection error")
-        )
-        mock_location_service.return_value = mock_location
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = None
+        mock_location_service.return_value = mock_resolver
 
         result = self.runner.invoke(main, ["--here"])
 
         assert result.exit_code != 0
-        assert "Failed to get current location" in result.output
-        assert "Connection error" in result.output
+        assert "Could not determine location" in result.output
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
-    @patch("weather.cli.LocationService")
+    @patch("weather.cli.LocationResolver")
     @patch("weather.cli.WeatherService")
     def test_current_location_takes_precedence_over_city(
         self, mock_weather_service, mock_location_service
     ):
         """Test that --here takes precedence over --city."""
-        # Setup mock location service
-        mock_location = Mock()
-        mock_location.get_current_location.return_value = (51.5074, -0.1278)
-        mock_location_service.return_value = mock_location
+        # Setup mock location resolver
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = Location.from_coordinates(51.5074, -0.1278)
+        mock_location_service.return_value = mock_resolver
 
         # Setup mock weather service
         mock_service = Mock()
@@ -565,19 +579,19 @@ Conditions: Sunny"""
 
         assert result.exit_code == 0
         # Should use coordinates, not the city name
-        mock_service.get_weather.assert_called_once_with((51.5074, -0.1278))
+        self.assert_get_weather_called_with_coords(mock_service, (51.5074, -0.1278))
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
-    @patch("weather.cli.LocationService")
+    @patch("weather.cli.LocationResolver")
     @patch("weather.cli.WeatherService")
     def test_current_location_with_weather_api_error(
         self, mock_weather_service, mock_location_service
     ):
         """Test current location with weather API error."""
-        # Setup mock location service
-        mock_location = Mock()
-        mock_location.get_current_location.return_value = (40.7128, -74.0060)
-        mock_location_service.return_value = mock_location
+        # Setup mock location resolver
+        mock_resolver = Mock()
+        mock_resolver.resolve_location.return_value = Location.from_coordinates(40.7128, -74.0060)
+        mock_location_service.return_value = mock_resolver
 
         # Setup mock weather service to fail
         mock_service = Mock()

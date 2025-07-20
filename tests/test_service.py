@@ -6,6 +6,7 @@ import pytest
 import requests
 
 from weather.service import WeatherService
+from weather.types import Location
 
 
 class TestWeatherService:
@@ -34,7 +35,7 @@ class TestWeatherService:
         service = WeatherService()
 
         with pytest.raises(ValueError) as exc_info:
-            service.get_weather("London")
+            service.get_weather(Location.from_city("London"))
 
         assert "API key is required" in str(exc_info.value)
         assert "OPENWEATHER_API_KEY" in str(exc_info.value)
@@ -44,11 +45,11 @@ class TestWeatherService:
         service = WeatherService("")
 
         with pytest.raises(ValueError) as exc_info:
-            service.get_weather("London")
+            service.get_weather(Location.from_city("London"))
 
         assert "API key is required" in str(exc_info.value)
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_success(self, mock_get):
         """Test successful weather data retrieval."""
         mock_response = Mock()
@@ -62,7 +63,7 @@ class TestWeatherService:
         mock_get.return_value = mock_response
 
         service = WeatherService("test_api_key")
-        result = service.get_weather("London")
+        result = service.get_weather(Location.from_city("London"))
 
         expected_params = {
             "q": "London",
@@ -72,11 +73,13 @@ class TestWeatherService:
         mock_get.assert_called_once_with(
             "https://api.openweathermap.org/data/2.5/weather",
             params=expected_params,
+            headers={},
+            timeout=10,
         )
         mock_response.raise_for_status.assert_called_once()
         assert result == mock_response.json.return_value
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_handles_http_error(self, mock_get):
         """Test that get_weather propagates HTTP errors."""
         mock_response = Mock()
@@ -88,9 +91,9 @@ class TestWeatherService:
         service = WeatherService("test_api_key")
 
         with pytest.raises(requests.HTTPError):
-            service.get_weather("NonexistentCity")
+            service.get_weather(Location.from_city("NonexistentCity"))
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_handles_request_exception(self, mock_get):
         """Test that get_weather propagates request exceptions."""
         mock_get.side_effect = requests.RequestException("Network error")
@@ -98,9 +101,9 @@ class TestWeatherService:
         service = WeatherService("test_api_key")
 
         with pytest.raises(requests.RequestException):
-            service.get_weather("London")
+            service.get_weather(Location.from_city("London"))
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_with_city_containing_spaces(self, mock_get):
         """Test get_weather with city names containing spaces."""
         mock_response = Mock()
@@ -109,7 +112,7 @@ class TestWeatherService:
         mock_get.return_value = mock_response
 
         service = WeatherService("test_api_key")
-        service.get_weather("New York")
+        service.get_weather(Location.from_city("New York"))
 
         expected_params = {
             "q": "New York",
@@ -119,9 +122,11 @@ class TestWeatherService:
         mock_get.assert_called_once_with(
             "https://api.openweathermap.org/data/2.5/weather",
             params=expected_params,
+            headers={},
+            timeout=10,
         )
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_with_special_characters(self, mock_get):
         """Test get_weather with city names containing special characters."""
         mock_response = Mock()
@@ -130,7 +135,7 @@ class TestWeatherService:
         mock_get.return_value = mock_response
 
         service = WeatherService("test_api_key")
-        service.get_weather("São Paulo")
+        service.get_weather(Location.from_city("São Paulo"))
 
         expected_params = {
             "q": "São Paulo",
@@ -140,6 +145,8 @@ class TestWeatherService:
         mock_get.assert_called_once_with(
             "https://api.openweathermap.org/data/2.5/weather",
             params=expected_params,
+            headers={},
+            timeout=10,
         )
 
     def test_format_weather_output_basic(self):
@@ -262,7 +269,7 @@ Conditions: Light Snow"""
         with pytest.raises(IndexError):
             service.format_weather_output(weather_data)
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_uses_metric_units(self, mock_get):
         """Test that get_weather always uses metric units."""
         mock_response = Mock()
@@ -271,13 +278,13 @@ Conditions: Light Snow"""
         mock_get.return_value = mock_response
 
         service = WeatherService("test_api_key")
-        service.get_weather("London")
+        service.get_weather(Location.from_city("London"))
 
         # Verify that units=metric is always included in params
         call_args = mock_get.call_args
         assert call_args[1]["params"]["units"] == "metric"
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_constructs_correct_url(self, mock_get):
         """Test that get_weather uses the correct API endpoint."""
         mock_response = Mock()
@@ -286,7 +293,7 @@ Conditions: Light Snow"""
         mock_get.return_value = mock_response
 
         service = WeatherService("test_api_key")
-        service.get_weather("London")
+        service.get_weather(Location.from_city("London"))
 
         call_args = mock_get.call_args
         assert (
@@ -302,7 +309,7 @@ Conditions: Light Snow"""
             service = WeatherService(key)
             assert service.api_key == key
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_integration_full_workflow(self, mock_get):
         """Test complete workflow from API call to formatted output."""
         # Mock API response
@@ -319,7 +326,7 @@ Conditions: Light Snow"""
 
         # Test complete workflow
         service = WeatherService("integration_test_key")
-        weather_data = service.get_weather("Tokyo")
+        weather_data = service.get_weather(Location.from_city("Tokyo"))
         formatted_output = service.format_weather_output(weather_data)
 
         # Verify API was called correctly
@@ -331,6 +338,8 @@ Conditions: Light Snow"""
         mock_get.assert_called_once_with(
             "https://api.openweathermap.org/data/2.5/weather",
             params=expected_params,
+            headers={},
+            timeout=10,
         )
 
         # Verify data is returned correctly
@@ -343,7 +352,7 @@ Humidity: 75%
 Conditions: Few Clouds"""
         assert formatted_output == expected_output
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_with_coordinates(self, mock_get):
         """Test get_weather with latitude and longitude coordinates."""
         mock_response = Mock()
@@ -358,7 +367,7 @@ Conditions: Few Clouds"""
 
         service = WeatherService("test_api_key")
         coordinates = (40.7128, -74.0060)  # New York coordinates
-        result = service.get_weather(coordinates)
+        result = service.get_weather(Location.from_coordinates(*coordinates))
 
         expected_params = {
             "lat": "40.7128",
@@ -369,10 +378,12 @@ Conditions: Few Clouds"""
         mock_get.assert_called_once_with(
             "https://api.openweathermap.org/data/2.5/weather",
             params=expected_params,
+            headers={},
+            timeout=10,
         )
         assert result == mock_response.json.return_value
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_coordinates_vs_city(self, mock_get):
         """Test that coordinates and city names use different parameters."""
         mock_response = Mock()
@@ -383,7 +394,7 @@ Conditions: Few Clouds"""
         service = WeatherService("test_api_key")
 
         # Test with city
-        service.get_weather("London")
+        service.get_weather(Location.from_city("London"))
         city_call_params = mock_get.call_args[1]["params"]
         assert "q" in city_call_params
         assert "lat" not in city_call_params
@@ -393,7 +404,7 @@ Conditions: Few Clouds"""
         mock_get.reset_mock()
 
         # Test with coordinates
-        service.get_weather((51.5074, -0.1278))
+        service.get_weather(Location.from_coordinates(51.5074, -0.1278))
         coord_call_params = mock_get.call_args[1]["params"]
         assert "lat" in coord_call_params
         assert "lon" in coord_call_params
@@ -405,9 +416,9 @@ Conditions: Few Clouds"""
 
         # Test with invalid coordinate tuple (wrong length)
         with pytest.raises((ValueError, TypeError)):
-            service.get_weather((40.7128,))  # Missing longitude
+            service.get_weather(Location.from_coordinates(40.7128))  # Missing longitude
 
-    @patch("weather.service.requests.get")
+    @patch("weather.base_service.requests.get")
     def test_get_weather_with_negative_coordinates(self, mock_get):
         """Test get_weather with negative coordinates."""
         mock_response = Mock()
@@ -417,7 +428,7 @@ Conditions: Few Clouds"""
 
         service = WeatherService("test_api_key")
         coordinates = (-33.8688, 151.2093)  # Sydney coordinates
-        service.get_weather(coordinates)
+        service.get_weather(Location.from_coordinates(*coordinates))
 
         expected_params = {
             "lat": "-33.8688",
@@ -428,4 +439,6 @@ Conditions: Few Clouds"""
         mock_get.assert_called_once_with(
             "https://api.openweathermap.org/data/2.5/weather",
             params=expected_params,
+            headers={},
+            timeout=10,
         )
