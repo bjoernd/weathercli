@@ -4,6 +4,7 @@ config.yml
 
 # Debug files
 weather_debug.log
+ClaudeLog
 
 # Python
 __pycache__/
