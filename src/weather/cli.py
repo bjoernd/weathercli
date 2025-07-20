@@ -9,25 +9,49 @@ from weather.service import WeatherService
 
 
 @click.command()
-@click.option("--city", required=True, help="City name to get weather for")
+@click.option(
+    "--city",
+    help="City name to get weather for (uses config default if not provided)",
+)
 @click.option(
     "--debug", is_flag=True, help="Enable debug mode with verbose logging"
 )
-def main(city: str, debug: bool) -> None:
+def main(city: str | None, debug: bool) -> None:
     """Get weather information for a city."""
     # Setup logging based on debug flag
     setup_logging(debug=debug)
     logger = get_logger(__name__)
 
+    logger.debug(f"Debug mode: {debug}")
+
+    with timer(logger, "configuration initialization"):
+        config = Config()
+        api_key = config.get_api_key("openweather")
+
+    logger.debug(f"API key configured: {'Yes' if api_key else 'No'}")
+
+    # Handle default city if --city not provided
+    if not city:
+        logger.debug("No city provided via --city, checking for default city")
+        city = config.get_default_city()
+        if city:
+            logger.debug(f"Using default city from config: {city}")
+        else:
+            logger.debug("No default city configured")
+            click.echo(
+                "Error: No city specified and no default city configured."
+            )
+            click.echo("Either:")
+            click.echo("1. Use --city 'City Name' to specify a city")
+            click.echo("2. Configure a default city in config.yaml:")
+            click.echo("   defaults:")
+            click.echo("     city: 'Your City'")
+            raise click.Abort()
+    else:
+        logger.debug(f"Using city from command line: {city}")
+
     with timer(logger, f"weather lookup for city: {city}"):
         logger.debug(f"Starting weather lookup for city: {city}")
-        logger.debug(f"Debug mode: {debug}")
-
-        with timer(logger, "configuration initialization"):
-            config = Config()
-            api_key = config.get_api_key("openweather")
-
-        logger.debug(f"API key configured: {'Yes' if api_key else 'No'}")
 
         if not api_key:
             click.echo("Error: OpenWeather API key not found.")

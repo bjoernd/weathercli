@@ -29,11 +29,14 @@ export OPENWEATHER_API_KEY="your_api_key_here"
    cp config.example.yaml config.yaml
    ```
 
-2. Edit `config.yaml` and add your API key:
+2. Edit `config.yaml` and add your API key and optional default city:
    ```yaml
    api:
      openweather:
        key: "your_api_key_here"
+
+   defaults:
+     city: "London"  # Optional: default city when --city not specified
    ```
 
 **Get your free API key**: [OpenWeatherMap API](https://openweathermap.org/api)
@@ -43,8 +46,11 @@ export OPENWEATHER_API_KEY="your_api_key_here"
 ### Basic Usage
 
 ```bash
-# Get weather for a city
+# Get weather for a specific city
 poetry run weather --city "New York"
+
+# Get weather for default city (configured in config.yaml)
+poetry run weather
 ```
 
 **Example output:**
@@ -86,7 +92,7 @@ poetry run weather --help
 
 ```
 Options:
-  --city TEXT  City name to get weather for  [required]
+  --city TEXT  City name to get weather for (uses config default if not provided)
   --debug      Enable debug mode with verbose logging
   --help       Show this message and exit
 ```

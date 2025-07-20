@@ -6,9 +6,11 @@ api:
   openweather:
     # Get your free API key from: https://openweathermap.org/api
     key: "your_openweather_api_key_here"
-    
-# You can add other configuration options here
-# For example:
-# defaults:
-#   units: "metric"  # or "imperial" or "kelvin"
-#   city: "London"
+
+# Default settings
+defaults:
+  # Default city to use when --city is not specified
+  city: "London"
+  
+  # Other possible future defaults:
+  # units: "metric"  # or "imperial" or "kelvin"

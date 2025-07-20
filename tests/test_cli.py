@@ -27,11 +27,24 @@ class TestCLI:
             self.config_path.unlink()
         Path(self.temp_dir).rmdir()
 
-    def test_cli_requires_city_argument(self):
-        """Test that CLI requires --city argument."""
+    @patch("weather.cli.Config")
+    def test_cli_uses_default_city_when_available(self, mock_config_class):
+        """Test that CLI uses default city when no --city provided and default
+        exists."""
+        # Setup mock config with default city
+        mock_config = Mock()
+        mock_config.get_api_key.return_value = None  # API key error
+        mock_config.get_default_city.return_value = "Default City"
+        mock_config.get_default_city.return_value = "Default City"
+        mock_config_class.return_value = mock_config
+
         result = self.runner.invoke(main, [])
+
+        # Should exit with API key error, not missing city error
         assert result.exit_code != 0
-        assert "Missing option '--city'" in result.output
+        assert "Error: OpenWeather API key not found" in result.output
+        # Verify the default city was requested
+        mock_config.get_default_city.assert_called_once()
 
     def test_cli_accepts_city_argument(self):
         """Test that CLI accepts --city argument."""
@@ -52,11 +65,16 @@ class TestCLI:
 
             assert result.exit_code != 0
             assert "Error: OpenWeather API key not found" in result.output
-            assert "Environment variable: export OPENWEATHER_API_KEY" in result.output
+            assert (
+                "Environment variable: export OPENWEATHER_API_KEY"
+                in result.output
+            )
             assert "Config file (config.yaml)" in result.output
             assert "openweathermap.org/api" in result.output
 
-    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_env_key"}, clear=False)
+    @patch.dict(
+        os.environ, {"OPENWEATHER_API_KEY": "test_env_key"}, clear=False
+    )
     @patch("weather.cli.WeatherService")
     def test_uses_environment_api_key(self, mock_weather_service):
         """Test that CLI uses API key from environment variable."""
@@ -100,7 +118,9 @@ class TestCLI:
                 "weather": [{"description": "partly cloudy"}],
             }
             mock_service.get_weather.return_value = mock_weather_data
-            mock_service.format_weather_output.return_value = "Weather in Paris"
+            mock_service.format_weather_output.return_value = (
+                "Weather in Paris"
+            )
             mock_weather_service.return_value = mock_service
 
             result = self.runner.invoke(main, ["--city", "Paris"])
@@ -112,7 +132,9 @@ class TestCLI:
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "env_key"}, clear=False)
     @patch("weather.cli.WeatherService")
-    def test_environment_takes_precedence_over_config(self, mock_weather_service):
+    def test_environment_takes_precedence_over_config(
+        self, mock_weather_service
+    ):
         """Test that environment variable takes precedence over config file."""
         config_data = {"api": {"openweather": {"key": "config_key"}}}
 
@@ -147,7 +169,9 @@ class TestCLI:
         assert result.exit_code != 0
         assert "Error: City 'NonexistentCity' not found" in result.output
 
-    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "invalid_key"}, clear=False)
+    @patch.dict(
+        os.environ, {"OPENWEATHER_API_KEY": "invalid_key"}, clear=False
+    )
     @patch("weather.cli.WeatherService")
     def test_handles_requests_exception_401(self, mock_weather_service):
         """Test handling of 401 error (invalid API key)."""
@@ -166,7 +190,9 @@ class TestCLI:
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
     @patch("weather.cli.WeatherService")
-    def test_handles_requests_exception_other_status(self, mock_weather_service):
+    def test_handles_requests_exception_other_status(
+        self, mock_weather_service
+    ):
         """Test handling of other HTTP errors."""
         mock_service = Mock()
         mock_response = Mock()
@@ -183,7 +209,9 @@ class TestCLI:
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
     @patch("weather.cli.WeatherService")
-    def test_handles_requests_exception_no_response(self, mock_weather_service):
+    def test_handles_requests_exception_no_response(
+        self, mock_weather_service
+    ):
         """Test handling of network errors without response."""
         mock_service = Mock()
         mock_exception = requests.RequestException("Connection error")
@@ -193,7 +221,9 @@ class TestCLI:
         result = self.runner.invoke(main, ["--city", "London"])
 
         assert result.exit_code != 0
-        assert "Error: Network request failed - Connection error" in result.output
+        assert (
+            "Error: Network request failed - Connection error" in result.output
+        )
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
     @patch("weather.cli.WeatherService")
@@ -246,7 +276,9 @@ Conditions: Sunny"""
         assert result.exit_code == 0
         assert expected_output in result.output
         mock_service.get_weather.assert_called_once_with("New York")
-        mock_service.format_weather_output.assert_called_once_with(mock_weather_data)
+        mock_service.format_weather_output.assert_called_once_with(
+            mock_weather_data
+        )
 
     @patch("weather.cli.Config")
     def test_config_initialization(self, mock_config_class):
@@ -276,7 +308,9 @@ Conditions: Sunny"""
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
     @patch("weather.cli.WeatherService")
-    def test_weather_service_called_with_correct_city(self, mock_weather_service):
+    def test_weather_service_called_with_correct_city(
+        self, mock_weather_service
+    ):
         """Test that WeatherService.get_weather is called with correct city."""
         mock_service = Mock()
         mock_service.get_weather.return_value = {}
@@ -291,5 +325,84 @@ Conditions: Sunny"""
 
         # Check that get_weather was called with each city
         expected_calls = [(city,) for city in test_cities]
-        actual_calls = [call.args for call in mock_service.get_weather.call_args_list]
+        actual_calls = [
+            call.args for call in mock_service.get_weather.call_args_list
+        ]
         assert actual_calls == expected_calls
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.WeatherService")
+    @patch("weather.cli.Config")
+    def test_uses_default_city_when_no_city_provided(
+        self, mock_config_class, mock_weather_service
+    ):
+        """Test that CLI uses default city when --city is not provided."""
+        # Setup mock config
+        mock_config = Mock()
+        mock_config.get_api_key.return_value = "test_key"
+        mock_config.get_default_city.return_value = "Default City"
+        mock_config_class.return_value = mock_config
+
+        # Setup mock service
+        mock_service = Mock()
+        mock_service.get_weather.return_value = {"name": "Default City"}
+        mock_service.format_weather_output.return_value = (
+            "Weather in Default City"
+        )
+        mock_weather_service.return_value = mock_service
+
+        result = self.runner.invoke(main, [])
+
+        assert result.exit_code == 0
+        assert "Weather in Default City" in result.output
+        mock_config.get_default_city.assert_called_once()
+        mock_service.get_weather.assert_called_once_with("Default City")
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.Config")
+    def test_error_when_no_city_and_no_default(self, mock_config_class):
+        """Test error when no city provided and no default city configured."""
+        # Setup mock config with no default city
+        mock_config = Mock()
+        mock_config.get_api_key.return_value = "test_key"
+        mock_config.get_default_city.return_value = None
+        mock_config_class.return_value = mock_config
+
+        result = self.runner.invoke(main, [])
+
+        assert result.exit_code != 0
+        assert (
+            "Error: No city specified and no default city configured"
+            in result.output
+        )
+        assert "Use --city 'City Name'" in result.output
+        assert "Configure a default city in config.yaml" in result.output
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.WeatherService")
+    @patch("weather.cli.Config")
+    def test_explicit_city_overrides_default(
+        self, mock_config_class, mock_weather_service
+    ):
+        """Test that explicit --city overrides default city."""
+        # Setup mock config with default city
+        mock_config = Mock()
+        mock_config.get_api_key.return_value = "test_key"
+        mock_config.get_default_city.return_value = "Default City"
+        mock_config_class.return_value = mock_config
+
+        # Setup mock service
+        mock_service = Mock()
+        mock_service.get_weather.return_value = {"name": "Explicit City"}
+        mock_service.format_weather_output.return_value = (
+            "Weather in Explicit City"
+        )
+        mock_weather_service.return_value = mock_service
+
+        result = self.runner.invoke(main, ["--city", "Explicit City"])
+
+        assert result.exit_code == 0
+        assert "Weather in Explicit City" in result.output
+        # Default city should not be called when explicit city is provided
+        mock_config.get_default_city.assert_not_called()
+        mock_service.get_weather.assert_called_once_with("Explicit City")

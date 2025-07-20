@@ -15,13 +15,19 @@ class TestWeatherService:
         """Test WeatherService initialization with API key."""
         service = WeatherService("test_api_key")
         assert service.api_key == "test_api_key"
-        assert service.base_url == "https://api.openweathermap.org/data/2.5/weather"
+        assert (
+            service.base_url
+            == "https://api.openweathermap.org/data/2.5/weather"
+        )
 
     def test_init_without_api_key(self):
         """Test WeatherService initialization without API key."""
         service = WeatherService()
         assert service.api_key is None
-        assert service.base_url == "https://api.openweathermap.org/data/2.5/weather"
+        assert (
+            service.base_url
+            == "https://api.openweathermap.org/data/2.5/weather"
+        )
 
     def test_get_weather_raises_value_error_without_api_key(self):
         """Test that get_weather raises ValueError when no API key is set."""
@@ -74,7 +80,9 @@ class TestWeatherService:
     def test_get_weather_handles_http_error(self, mock_get):
         """Test that get_weather propagates HTTP errors."""
         mock_response = Mock()
-        mock_response.raise_for_status.side_effect = requests.HTTPError("404 Not Found")
+        mock_response.raise_for_status.side_effect = requests.HTTPError(
+            "404 Not Found"
+        )
         mock_get.return_value = mock_response
 
         service = WeatherService("test_api_key")
@@ -281,7 +289,10 @@ Conditions: Light Snow"""
         service.get_weather("London")
 
         call_args = mock_get.call_args
-        assert call_args[0][0] == "https://api.openweathermap.org/data/2.5/weather"
+        assert (
+            call_args[0][0]
+            == "https://api.openweathermap.org/data/2.5/weather"
+        )
 
     def test_api_key_stored_correctly(self):
         """Test that API key is stored correctly during initialization."""

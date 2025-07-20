@@ -116,6 +116,22 @@ class Config:
 
             return api_key
 
+    def get_default_city(self) -> Optional[str]:
+        """
+        Get the default city from configuration.
+
+        Returns:
+            Default city if configured, None otherwise
+        """
+        with timer(self.logger, "default city lookup"):
+            self.logger.debug("Getting default city from configuration")
+            default_city = self.get("defaults.city")
+            if default_city:
+                self.logger.debug(f"Default city found: {default_city}")
+            else:
+                self.logger.debug("No default city configured")
+            return default_city
+
     def has_config_file(self) -> bool:
         """Check if config file exists."""
         return self.config_path.exists()
