@@ -79,6 +79,11 @@ def setup_logging(
     logger = logging.getLogger(__name__)
     logger.debug(f"Debug logging enabled. Log file: {log_file}")
 
+    # caveat: disable debug logging for URLLib, otherwise we might
+    # emit URL data, which might leak API keys via log file
+    urllib_log = logging.getLogger("urllib3")
+    urllib_log.setLevel(logging.WARNING)
+
 
 def get_logger(name: str) -> logging.Logger:
     """
