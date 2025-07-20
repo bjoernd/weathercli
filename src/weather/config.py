@@ -35,7 +35,9 @@ class Config:
             with open(self.config_path, "r", encoding="utf-8") as file:
                 self._config_data = yaml.safe_load(file) or {}
         except (yaml.YAMLError, IOError) as e:
-            raise ValueError(f"Error loading config from {self.config_path}: {e}")
+            raise ValueError(
+                f"Error loading config from {self.config_path}: {e}"
+            )
 
     def get(self, key: str, default: Any = None) -> Any:
         """

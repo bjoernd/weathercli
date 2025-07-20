@@ -37,8 +37,10 @@ cp config.example.yaml config.yaml
 poetry run weather --city "New York"
 
 # Run tests
-poetry run pytest
-poetry run pytest tests/test_config.py  # Run single test file
+poetry run pytest                        # Run all tests (52 total)
+poetry run pytest tests/test_config.py   # Run single test file
+poetry run pytest tests/test_cli.py -v   # Run CLI tests with verbose output
+poetry run pytest tests/test_service.py  # Run WeatherService tests
 
 # Code formatting and linting (run after every code change)
 poetry run black .
@@ -57,7 +59,10 @@ poetry add --group dev <package>  # Development dependency
 - `src/weather/cli.py` - Command line interface entry point with Click commands
 - `src/weather/config.py` - Configuration management (YAML + env vars)
 - `src/weather/service.py` - WeatherService for OpenWeatherMap API integration
-- `tests/` - Test files (pytest-based)
+- `tests/` - Comprehensive test suite (52 tests total)
+  - `test_cli.py` - CLI functionality and error handling tests
+  - `test_config.py` - Configuration system tests
+  - `test_service.py` - WeatherService API integration tests
 - `config.example.yaml` - Template configuration file
 - `pyproject.toml` - Poetry configuration and dependencies
 
@@ -71,6 +76,8 @@ poetry add --group dev <package>  # Development dependency
 - Configuration system: Environment variables override YAML config
 - Error handling: Comprehensive HTTP error codes and user-friendly messages
 - Weather data fetched from OpenWeatherMap API in metric units
+- Test coverage: All components have comprehensive unit tests with mocking
+- Three-layer architecture: CLI → Config/Service → External API
 
 ## Error Handling Guidelines
 
@@ -78,7 +85,7 @@ poetry add --group dev <package>  # Development dependency
 
 ## Development Best Practices
 
-- Linting: after every code change, run `poetry run black . && poetry run isort . && poetry run flake8 && poetry run mypy src/`
+- Linting: after every code change, run `poetry run black . && poetry run isort . && poetry run flake8 && poetry run mypy src/` and fix all reported issues
 - Testing: after every code change, run `poetry run pytest` and fix all failures
 
 ## Code Style Guidelines
