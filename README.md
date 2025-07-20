@@ -4,7 +4,11 @@ A Python command-line weather application that fetches current weather data from
 
 ## Features
 
-- 🌤️ Current weather information for any city
+- 🌤️ Get weather for any city worldwide
+- 📍 Automatic current location detection  
+- ⚙️ Simple configuration setup
+- 🏠 Set a default city for quick access
+- 🔍 Debug mode for troubleshooting
 
 ## Installation
 
@@ -41,6 +45,18 @@ export OPENWEATHER_API_KEY="your_api_key_here"
 
 **Get your free API key**: [OpenWeatherMap API](https://openweathermap.org/api)
 
+## How Location Detection Works
+
+The application determines your location in this priority order:
+
+1. **Explicit city**: `--city "City Name"` (highest priority)
+2. **Current location**: `--here` or automatic detection
+3. **Default city**: Configured in `config.yaml` (lowest priority)
+
+When you run `poetry run weather` without any options:
+- If a default city is configured, it uses that
+- If no default city is configured, it automatically detects your current location using IP geolocation
+
 ## Usage
 
 ### Basic Usage
@@ -49,7 +65,10 @@ export OPENWEATHER_API_KEY="your_api_key_here"
 # Get weather for a specific city
 poetry run weather --city "New York"
 
-# Get weather for default city (configured in config.yaml)
+# Get weather for current location (using IP geolocation)
+poetry run weather --here
+
+# Get weather automatically (uses current location if no default city configured)
 poetry run weather
 ```
 
@@ -93,6 +112,7 @@ poetry run weather --help
 ```
 Options:
   --city TEXT  City name to get weather for (uses config default if not provided)
+  --here       Use current location based on IP geolocation
   --debug      Enable debug mode with verbose logging
   --help       Show this message and exit
 ```

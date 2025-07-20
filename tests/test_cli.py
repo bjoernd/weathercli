@@ -222,7 +222,8 @@ class TestCLI:
 
         assert result.exit_code != 0
         assert (
-            "Error: Network request failed - Connection error" in result.output
+            "Error: Network request failed for London - Connection error"
+            in result.output
         )
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
@@ -359,24 +360,96 @@ Conditions: Sunny"""
         mock_service.get_weather.assert_called_once_with("Default City")
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.LocationService")
+    @patch("weather.cli.WeatherService")
     @patch("weather.cli.Config")
-    def test_error_when_no_city_and_no_default(self, mock_config_class):
-        """Test error when no city provided and no default city configured."""
+    def test_auto_location_when_no_city_and_no_default(
+        self, mock_config_class, mock_weather_service, mock_location_service
+    ):
+        """Test automatic location detection when no city and no default."""
         # Setup mock config with no default city
         mock_config = Mock()
         mock_config.get_api_key.return_value = "test_key"
         mock_config.get_default_city.return_value = None
         mock_config_class.return_value = mock_config
 
+        # Setup mock location service
+        mock_location = Mock()
+        mock_location.get_current_location.return_value = (40.7128, -74.0060)
+        mock_location_service.return_value = mock_location
+
+        # Setup mock weather service
+        mock_service = Mock()
+        mock_weather_data = {
+            "name": "New York",
+            "sys": {"country": "US"},
+            "main": {"temp": 20.0, "feels_like": 18.0, "humidity": 65},
+            "weather": [{"description": "clear sky"}],
+        }
+        mock_service.get_weather.return_value = mock_weather_data
+        mock_service.format_weather_output.return_value = (
+            "Weather in New York, US"
+        )
+        mock_weather_service.return_value = mock_service
+
+        result = self.runner.invoke(main, [])
+
+        assert result.exit_code == 0
+        assert "Weather in New York, US" in result.output
+        mock_location.get_current_location.assert_called_once()
+        mock_service.get_weather.assert_called_once_with((40.7128, -74.0060))
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.LocationService")
+    @patch("weather.cli.Config")
+    def test_auto_location_fails_when_no_city_and_no_default(
+        self, mock_config_class, mock_location_service
+    ):
+        """Test error when automatic location detection fails."""
+        # Setup mock config with no default city
+        mock_config = Mock()
+        mock_config.get_api_key.return_value = "test_key"
+        mock_config.get_default_city.return_value = None
+        mock_config_class.return_value = mock_config
+
+        # Setup mock location service to fail
+        mock_location = Mock()
+        mock_location.get_current_location.return_value = None
+        mock_location_service.return_value = mock_location
+
         result = self.runner.invoke(main, [])
 
         assert result.exit_code != 0
-        assert (
-            "Error: No city specified and no default city configured"
-            in result.output
-        )
+        assert "Could not determine current location" in result.output
         assert "Use --city 'City Name'" in result.output
         assert "Configure a default city in config.yaml" in result.output
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.LocationService")
+    @patch("weather.cli.Config")
+    def test_auto_location_network_error_when_no_city_and_no_default(
+        self, mock_config_class, mock_location_service
+    ):
+        """Test error when automatic location detection has network error."""
+        # Setup mock config with no default city
+        mock_config = Mock()
+        mock_config.get_api_key.return_value = "test_key"
+        mock_config.get_default_city.return_value = None
+        mock_config_class.return_value = mock_config
+
+        # Setup mock location service to raise exception
+        mock_location = Mock()
+        mock_location.get_current_location.side_effect = (
+            requests.RequestException("Network error")
+        )
+        mock_location_service.return_value = mock_location
+
+        result = self.runner.invoke(main, [])
+
+        assert result.exit_code != 0
+        assert "Failed to get current location" in result.output
+        assert "Network error" in result.output
+        assert "Use --city 'City Name'" in result.output
 
     @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
     @patch("weather.cli.WeatherService")
@@ -406,3 +479,128 @@ Conditions: Sunny"""
         # Default city should not be called when explicit city is provided
         mock_config.get_default_city.assert_not_called()
         mock_service.get_weather.assert_called_once_with("Explicit City")
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.LocationService")
+    @patch("weather.cli.WeatherService")
+    def test_current_location_success(
+        self, mock_weather_service, mock_location_service
+    ):
+        """Test successful current location weather retrieval."""
+        # Setup mock location service
+        mock_location = Mock()
+        mock_location.get_current_location.return_value = (40.7128, -74.0060)
+        mock_location_service.return_value = mock_location
+
+        # Setup mock weather service
+        mock_service = Mock()
+        mock_weather_data = {
+            "name": "New York",
+            "sys": {"country": "US"},
+            "main": {"temp": 20.0, "feels_like": 18.0, "humidity": 65},
+            "weather": [{"description": "clear sky"}],
+        }
+        mock_service.get_weather.return_value = mock_weather_data
+        mock_service.format_weather_output.return_value = (
+            "Weather in New York, US"
+        )
+        mock_weather_service.return_value = mock_service
+
+        result = self.runner.invoke(main, ["--here"])
+
+        assert result.exit_code == 0
+        assert "Weather in New York, US" in result.output
+        mock_location.get_current_location.assert_called_once()
+        mock_service.get_weather.assert_called_once_with((40.7128, -74.0060))
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.LocationService")
+    def test_current_location_fails(self, mock_location_service):
+        """Test current location when location service fails."""
+        mock_location = Mock()
+        mock_location.get_current_location.return_value = None
+        mock_location_service.return_value = mock_location
+
+        result = self.runner.invoke(main, ["--here"])
+
+        assert result.exit_code != 0
+        assert "Could not determine current location" in result.output
+        assert "Try specifying a city with --city instead" in result.output
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.LocationService")
+    def test_current_location_network_error(self, mock_location_service):
+        """Test current location with network error."""
+        mock_location = Mock()
+        mock_location.get_current_location.side_effect = (
+            requests.RequestException("Connection error")
+        )
+        mock_location_service.return_value = mock_location
+
+        result = self.runner.invoke(main, ["--here"])
+
+        assert result.exit_code != 0
+        assert "Failed to get current location" in result.output
+        assert "Connection error" in result.output
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.LocationService")
+    @patch("weather.cli.WeatherService")
+    def test_current_location_takes_precedence_over_city(
+        self, mock_weather_service, mock_location_service
+    ):
+        """Test that --here takes precedence over --city."""
+        # Setup mock location service
+        mock_location = Mock()
+        mock_location.get_current_location.return_value = (51.5074, -0.1278)
+        mock_location_service.return_value = mock_location
+
+        # Setup mock weather service
+        mock_service = Mock()
+        mock_service.get_weather.return_value = {"name": "London"}
+        mock_service.format_weather_output.return_value = "Weather in London"
+        mock_weather_service.return_value = mock_service
+
+        result = self.runner.invoke(main, ["--here", "--city", "Paris"])
+
+        assert result.exit_code == 0
+        # Should use coordinates, not the city name
+        mock_service.get_weather.assert_called_once_with((51.5074, -0.1278))
+
+    @patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}, clear=False)
+    @patch("weather.cli.LocationService")
+    @patch("weather.cli.WeatherService")
+    def test_current_location_with_weather_api_error(
+        self, mock_weather_service, mock_location_service
+    ):
+        """Test current location with weather API error."""
+        # Setup mock location service
+        mock_location = Mock()
+        mock_location.get_current_location.return_value = (40.7128, -74.0060)
+        mock_location_service.return_value = mock_location
+
+        # Setup mock weather service to fail
+        mock_service = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_exception = requests.RequestException()
+        mock_exception.response = mock_response
+        mock_service.get_weather.side_effect = mock_exception
+        mock_weather_service.return_value = mock_service
+
+        result = self.runner.invoke(main, ["--here"])
+
+        assert result.exit_code != 0
+        assert (
+            "No weather data found for coordinates 40.71, -74.01"
+            in result.output
+        )
+
+    @patch("weather.cli.Config")
+    def test_help_message_includes_current_location(self, mock_config_class):
+        """Test that help message includes --here option."""
+        result = self.runner.invoke(main, ["--help"])
+
+        assert result.exit_code == 0
+        assert "--here" in result.output
+        assert "Use current location based on IP geolocation" in result.output

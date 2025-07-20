@@ -342,3 +342,90 @@ Temperature: 25.5°C (feels like 27.0°C)
 Humidity: 75%
 Conditions: Few Clouds"""
         assert formatted_output == expected_output
+
+    @patch("weather.service.requests.get")
+    def test_get_weather_with_coordinates(self, mock_get):
+        """Test get_weather with latitude and longitude coordinates."""
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "name": "New York",
+            "sys": {"country": "US"},
+            "main": {"temp": 22.0, "feels_like": 24.0, "humidity": 55},
+            "weather": [{"description": "clear sky"}],
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        service = WeatherService("test_api_key")
+        coordinates = (40.7128, -74.0060)  # New York coordinates
+        result = service.get_weather(coordinates)
+
+        expected_params = {
+            "lat": "40.7128",
+            "lon": "-74.006",
+            "appid": "test_api_key",
+            "units": "metric",
+        }
+        mock_get.assert_called_once_with(
+            "https://api.openweathermap.org/data/2.5/weather",
+            params=expected_params,
+        )
+        assert result == mock_response.json.return_value
+
+    @patch("weather.service.requests.get")
+    def test_get_weather_coordinates_vs_city(self, mock_get):
+        """Test that coordinates and city names use different parameters."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"name": "Test Location"}
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        service = WeatherService("test_api_key")
+
+        # Test with city
+        service.get_weather("London")
+        city_call_params = mock_get.call_args[1]["params"]
+        assert "q" in city_call_params
+        assert "lat" not in city_call_params
+        assert "lon" not in city_call_params
+
+        # Reset mock
+        mock_get.reset_mock()
+
+        # Test with coordinates
+        service.get_weather((51.5074, -0.1278))
+        coord_call_params = mock_get.call_args[1]["params"]
+        assert "lat" in coord_call_params
+        assert "lon" in coord_call_params
+        assert "q" not in coord_call_params
+
+    def test_get_weather_coordinates_type_validation(self):
+        """Test that coordinates are properly validated."""
+        service = WeatherService("test_api_key")
+
+        # Test with invalid coordinate tuple (wrong length)
+        with pytest.raises((ValueError, TypeError)):
+            service.get_weather((40.7128,))  # Missing longitude
+
+    @patch("weather.service.requests.get")
+    def test_get_weather_with_negative_coordinates(self, mock_get):
+        """Test get_weather with negative coordinates."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"name": "Southern Hemisphere"}
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        service = WeatherService("test_api_key")
+        coordinates = (-33.8688, 151.2093)  # Sydney coordinates
+        service.get_weather(coordinates)
+
+        expected_params = {
+            "lat": "-33.8688",
+            "lon": "151.2093",
+            "appid": "test_api_key",
+            "units": "metric",
+        }
+        mock_get.assert_called_once_with(
+            "https://api.openweathermap.org/data/2.5/weather",
+            params=expected_params,
+        )

@@ -1,6 +1,6 @@
 """Weather service for fetching weather data from API."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
 import requests
 
@@ -18,12 +18,14 @@ class WeatherService:
         self.logger.debug("WeatherService initialized with API key")
         self.logger.debug(f"Base URL: {self.base_url}")
 
-    def get_weather(self, city: str) -> Dict[str, Any]:
+    def get_weather(
+        self, location: Union[str, Tuple[float, float]]
+    ) -> Dict[str, Any]:
         """
-        Get weather data for a city.
+        Get weather data for a city or coordinates.
 
         Args:
-            city: Name of the city
+            location: City name or tuple of (latitude, longitude)
 
         Returns:
             Dictionary containing weather data
@@ -32,7 +34,11 @@ class WeatherService:
             requests.RequestException: If API request fails
             ValueError: If API key is not provided
         """
-        self.logger.debug(f"Getting weather for city: {city}")
+        if isinstance(location, tuple):
+            lat, lon = location
+            self.logger.debug(f"Getting weather for coordinates: {lat}, {lon}")
+        else:
+            self.logger.debug(f"Getting weather for city: {location}")
 
         if not self.api_key:
             self.logger.debug("API key validation failed")
@@ -41,7 +47,22 @@ class WeatherService:
                 "variable."
             )
 
-        params = {"q": city, "appid": self.api_key, "units": "metric"}
+        # Build parameters based on location type
+        if isinstance(location, tuple):
+            lat, lon = location
+            params = {
+                "lat": str(lat),
+                "lon": str(lon),
+                "appid": self.api_key,
+                "units": "metric",
+            }
+        else:
+            params = {
+                "q": location,
+                "appid": self.api_key,
+                "units": "metric",
+            }
+
         self.logger.debug(f"Request parameters: {params}")
 
         with timer(self.logger, f"API request to {self.base_url}"):
