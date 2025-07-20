@@ -5,11 +5,6 @@ A Python command-line weather application that fetches current weather data from
 ## Features
 
 - 🌤️ Current weather information for any city
-- 🔧 Flexible configuration (environment variables or YAML config)
-- 🐛 Comprehensive debug mode with timing measurements
-- 🕐 UTC timestamps for global consistency
-- 📊 Performance insights and detailed logging
-- ✅ Comprehensive test coverage (52 tests)
 
 ## Installation
 
