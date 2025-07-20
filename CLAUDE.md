@@ -38,8 +38,9 @@ poetry run weather --city "New York"
 
 # Run tests
 poetry run pytest
+poetry run pytest tests/test_config.py  # Run single test file
 
-# Code formatting and linting
+# Code formatting and linting (run after every code change)
 poetry run black .
 poetry run isort .
 poetry run flake8
@@ -53,18 +54,23 @@ poetry add --group dev <package>  # Development dependency
 ## Project Structure
 
 - `src/weather/` - Main package source code
-- `src/weather/__init__.py` - Package initialization
-- `src/weather/cli.py` - Command line interface entry point
-- `tests/` - Test files
+- `src/weather/cli.py` - Command line interface entry point with Click commands
+- `src/weather/config.py` - Configuration management (YAML + env vars)
+- `src/weather/service.py` - WeatherService for OpenWeatherMap API integration
+- `tests/` - Test files (pytest-based)
+- `config.example.yaml` - Template configuration file
 - `pyproject.toml` - Poetry configuration and dependencies
 
 ## Architecture Notes
 
 - Uses Poetry for dependency management and packaging
-- CLI built with Click framework
+- CLI built with Click framework for command-line interface
 - Package follows src-layout structure
 - Python 3.10+ required
 - Entry point configured as `weather` command
+- Configuration system: Environment variables override YAML config
+- Error handling: Comprehensive HTTP error codes and user-friendly messages
+- Weather data fetched from OpenWeatherMap API in metric units
 
 ## Error Handling Guidelines
 
@@ -72,8 +78,8 @@ poetry add --group dev <package>  # Development dependency
 
 ## Development Best Practices
 
-- Linting: after every code change, run a linter.
-- Testing: after every code change, run poetry testing and fix all failures.
+- Linting: after every code change, run `poetry run black . && poetry run isort . && poetry run flake8 && poetry run mypy src/`
+- Testing: after every code change, run `poetry run pytest` and fix all failures
 
 ## Code Style Guidelines
 
