@@ -71,7 +71,7 @@ class TestWeatherArt(unittest.TestCase):
                 art = WeatherArt.get_weather_art(icon)
                 self.assertIsInstance(art, list)
                 self.assertEqual(len(art), 5)
-                self.assertIn("░", "".join(art))  # Should contain mist pattern
+                self.assertIn("≋", "".join(art))  # Should contain mist pattern
 
     def test_get_weather_art_unknown_condition(self):
         """Test getting ASCII art for unknown weather condition."""
