@@ -76,10 +76,28 @@ poetry run weather
 
 **Example output:**
 ```
-Weather in New York, US:
-Temperature: 22.3°C (feels like 21.8°C)
-Humidity: 65%
-Conditions: Clear Sky
+    \   |   /    	Weather in New York, US:
+     .-.-.-.     	Temperature: 22.3°C (feels like 21.8°C)
+  .- (  ☀️  ) -. 	Humidity: 65%
+     '-'-'-'     	Conditions: Clear Sky
+    /   |   \    
+```
+
+**More examples:**
+```
+# Rainy weather
+    \  |  /      	Weather in London, GB:
+ .-.  ☀️  .-.    	Temperature: 15.2°C (feels like 14.8°C)
+(   ☁️☁️☁️   )   	Humidity: 78%
+  '🌧️🌧️🌧️🌧️'	 	Conditions: Light Rain
+   💧💧💧💧     
+
+# Cloudy night
+  *   🌙    *   	Weather in Tokyo, JP:
+ .-.      .-.   	Temperature: 18.5°C (feels like 17.9°C)
+(   ☁️☁️☁️   )  	Humidity: 72%
+ '-'     '-'		Conditions: Few Clouds
+   *        *   
 ```
 
 ### Debug Mode
@@ -129,10 +147,11 @@ poetry install
 cp config.example.yaml config.yaml
 # Edit config.yaml and add your OpenWeather API key
 
-# Run tests (52 tests total)
+# Run tests (96 tests total)
 poetry run pytest                        # All tests
 poetry run pytest tests/test_cli.py      # CLI tests only
 poetry run pytest tests/test_service.py  # Service tests only
+poetry run pytest tests/test_weather_art.py  # Weather art tests only
 poetry run pytest -v                     # Verbose output
 
 # Code formatting and linting
@@ -145,11 +164,25 @@ poetry run mypy src/                     # Type checking
 poetry run black . && poetry run isort . && poetry run flake8 && poetry run mypy src/
 ```
 
+## Visual Weather Patterns
+
+The application displays ASCII art representations for all weather conditions:
+
+- ☀️ **Clear skies** - Sun with rays (day) or moon with stars (night)
+- ☁️ **Cloudy conditions** - Various cloud formations from few to overcast
+- 🌧️ **Rain** - Clouds with raindrops, from light drizzle to heavy rain
+- ❄️ **Snow** - Clouds with snowflakes
+- ⛈️ **Thunderstorms** - Dark clouds with lightning and rain
+- 🌫️ **Mist/Fog** - Atmospheric patterns for low visibility
+
 ## Architecture
 
 - **CLI Layer** (`cli.py`): Click-based command-line interface
-- **Configuration** (`config.py`): YAML config + environment variable management
+- **Location Resolution** (`location_resolver.py`): Smart location detection with fallback priority
+- **Configuration** (`config.py`): YAML config + environment variable management  
 - **Service Layer** (`service.py`): OpenWeatherMap API integration
+- **Weather Art** (`weather_art.py`): ASCII art representations with tab-based alignment
+- **Error Handling** (`errors.py`): Centralized user-friendly error messages
 - **Logging** (`logging_config.py`): Debug logging with UTC timestamps and timing
 
 ## Error Handling
