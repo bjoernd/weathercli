@@ -25,9 +25,7 @@ class LocationService(BaseAPIService):
         Raises:
             requests.RequestException: If API request fails
         """
-        location_data = self._make_request(
-            headers={"User-Agent": USER_AGENT}
-        )
+        location_data = self._make_request(headers={"User-Agent": USER_AGENT})
 
         if location_data.get("error"):
             error_msg = location_data.get("reason", "Unknown error")

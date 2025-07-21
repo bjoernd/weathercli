@@ -150,23 +150,27 @@ class TestWeatherService:
         )
 
     def test_format_weather_output_basic(self):
-        """Test basic weather data formatting."""
+        """Test basic weather data formatting with ASCII art."""
         weather_data = {
             "name": "London",
             "sys": {"country": "GB"},
             "main": {"temp": 20.0, "feels_like": 18.0, "humidity": 65},
-            "weather": [{"description": "clear sky"}],
+            "weather": [{"description": "clear sky", "icon": "01d"}],
         }
 
         service = WeatherService("test_api_key")
         result = service.format_weather_output(weather_data)
 
-        expected = """Weather in London, GB:
-Temperature: 20.0°C (feels like 18.0°C)
-Humidity: 65%
-Conditions: Clear Sky"""
+        # Check that result contains both ASCII art and weather text
+        assert "Weather in London, GB:" in result
+        assert "Temperature: 20.0°C (feels like 18.0°C)" in result
+        assert "Humidity: 65%" in result
+        assert "Conditions: Clear Sky" in result
+        assert "☀️" in result  # Should contain sun emoji from ASCII art
 
-        assert result == expected
+        # Check that result has multiple lines (art + text)
+        lines = result.split("\n")
+        assert len(lines) >= 4  # Should have at least 4 lines total
 
     def test_format_weather_output_with_integer_values(self):
         """Test weather formatting with integer temperature values."""
@@ -174,18 +178,19 @@ Conditions: Clear Sky"""
             "name": "Paris",
             "sys": {"country": "FR"},
             "main": {"temp": 15, "feels_like": 14, "humidity": 70},
-            "weather": [{"description": "partly cloudy"}],
+            "weather": [{"description": "partly cloudy", "icon": "02d"}],
         }
 
         service = WeatherService("test_api_key")
         result = service.format_weather_output(weather_data)
 
-        expected = """Weather in Paris, FR:
-Temperature: 15°C (feels like 14°C)
-Humidity: 70%
-Conditions: Partly Cloudy"""
-
-        assert result == expected
+        # Check weather data content
+        assert "Weather in Paris, FR:" in result
+        assert "Temperature: 15°C (feels like 14°C)" in result
+        assert "Humidity: 70%" in result
+        assert "Conditions: Partly Cloudy" in result
+        # Should contain both sun and cloud emojis for partly cloudy
+        assert "☀️" in result or "☁️" in result
 
     def test_format_weather_output_with_negative_temperature(self):
         """Test weather formatting with negative temperatures."""
@@ -193,18 +198,18 @@ Conditions: Partly Cloudy"""
             "name": "Moscow",
             "sys": {"country": "RU"},
             "main": {"temp": -5.2, "feels_like": -8.1, "humidity": 85},
-            "weather": [{"description": "light snow"}],
+            "weather": [{"description": "light snow", "icon": "13d"}],
         }
 
         service = WeatherService("test_api_key")
         result = service.format_weather_output(weather_data)
 
-        expected = """Weather in Moscow, RU:
-Temperature: -5.2°C (feels like -8.1°C)
-Humidity: 85%
-Conditions: Light Snow"""
-
-        assert result == expected
+        # Check weather data content
+        assert "Weather in Moscow, RU:" in result
+        assert "Temperature: -5.2°C (feels like -8.1°C)" in result
+        assert "Humidity: 85%" in result
+        assert "Conditions: Light Snow" in result
+        assert "❄️" in result  # Should contain snowflake emoji
 
     def test_format_weather_output_description_capitalization(self):
         """Test that weather description is properly capitalized."""
@@ -222,7 +227,7 @@ Conditions: Light Snow"""
                 "name": "Test City",
                 "sys": {"country": "TC"},
                 "main": {"temp": 20.0, "feels_like": 18.0, "humidity": 60},
-                "weather": [{"description": description_input}],
+                "weather": [{"description": description_input, "icon": "01d"}],
             }
 
             result = service.format_weather_output(weather_data)
@@ -247,7 +252,7 @@ Conditions: Light Snow"""
             "name": "London",
             "sys": {"country": "GB"},
             "main": {"temp": 20.0},  # Missing feels_like and humidity
-            "weather": [{"description": "clear sky"}],
+            "weather": [{"description": "clear sky", "icon": "01d"}],
         }
 
         service = WeatherService("test_api_key")
@@ -318,7 +323,7 @@ Conditions: Light Snow"""
             "name": "Tokyo",
             "sys": {"country": "JP"},
             "main": {"temp": 25.5, "feels_like": 27.0, "humidity": 75},
-            "weather": [{"description": "few clouds"}],
+            "weather": [{"description": "few clouds", "icon": "02d"}],
         }
         mock_response.json.return_value = api_response
         mock_response.raise_for_status.return_value = None
@@ -345,12 +350,13 @@ Conditions: Light Snow"""
         # Verify data is returned correctly
         assert weather_data == api_response
 
-        # Verify formatting is correct
-        expected_output = """Weather in Tokyo, JP:
-Temperature: 25.5°C (feels like 27.0°C)
-Humidity: 75%
-Conditions: Few Clouds"""
-        assert formatted_output == expected_output
+        # Verify formatting includes both ASCII art and weather text
+        assert "Weather in Tokyo, JP:" in formatted_output
+        assert "Temperature: 25.5°C (feels like 27.0°C)" in formatted_output
+        assert "Humidity: 75%" in formatted_output
+        assert "Conditions: Few Clouds" in formatted_output
+        # Should contain ASCII art elements for few clouds (02d)
+        assert "☀️" in formatted_output or "☁️" in formatted_output
 
     @patch("weather.base_service.requests.get")
     def test_get_weather_with_coordinates(self, mock_get):
@@ -416,7 +422,9 @@ Conditions: Few Clouds"""
 
         # Test with invalid coordinate tuple (wrong length)
         with pytest.raises((ValueError, TypeError)):
-            service.get_weather(Location.from_coordinates(40.7128))  # Missing longitude
+            service.get_weather(
+                Location.from_coordinates(40.7128)
+            )  # Missing longitude
 
     @patch("weather.base_service.requests.get")
     def test_get_weather_with_negative_coordinates(self, mock_get):

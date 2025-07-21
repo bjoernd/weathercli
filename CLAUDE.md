@@ -18,6 +18,8 @@ The application uses a YAML-based configuration system:
    api:
      openweather:
        key: "your_api_key_here"
+   defaults:
+     city: "London"  # Optional default city
    ```
 
 3. **Setup**: Copy `config.example.yaml` to `config.yaml` and add your API key
@@ -35,9 +37,11 @@ cp config.example.yaml config.yaml
 
 # Run the CLI application
 poetry run weather --city "New York"
+poetry run weather --here              # Use current location
+poetry run weather --debug            # Enable debug logging
 
 # Run tests
-poetry run pytest                        # Run all tests (52 total)
+poetry run pytest                        # Run all tests (83 total)
 poetry run pytest tests/test_config.py   # Run single test file
 poetry run pytest tests/test_cli.py -v   # Run CLI tests with verbose output
 poetry run pytest tests/test_service.py  # Run WeatherService tests
@@ -61,12 +65,17 @@ poetry add --group dev <package>  # Development dependency
 - `src/weather/config.py` - Configuration management (YAML + env vars)  
 - `src/weather/service.py` - WeatherService for OpenWeatherMap API integration
 - `src/weather/location.py` - LocationService for IP-based geolocation
+- `src/weather/location_resolver.py` - Location resolution with fallback priority
+- `src/weather/base_service.py` - Shared API service base class with timing
+- `src/weather/types.py` - Location dataclass and common types
+- `src/weather/errors.py` - Centralized error handling with user-friendly messages
+- `src/weather/constants.py` - Configuration constants and API endpoints
 - `src/weather/logging_config.py` - Centralized logging with UTC timestamps and timing
-- `tests/` - Comprehensive test suite (52 tests total)
-  - `test_cli.py` - CLI functionality and error handling tests
-  - `test_config.py` - Configuration system tests
-  - `test_service.py` - WeatherService API integration tests
-  - `test_location.py` - LocationService geolocation tests
+- `tests/` - Comprehensive test suite (83 tests total)
+  - `test_cli.py` - CLI functionality and error handling tests (27 tests)
+  - `test_config.py` - Configuration system tests (17 tests)
+  - `test_service.py` - WeatherService API integration tests (26 tests)
+  - `test_location.py` - LocationService geolocation tests (13 tests)
 - `config.example.yaml` - Template configuration file
 - `pyproject.toml` - Poetry configuration and dependencies
 
@@ -74,17 +83,20 @@ poetry add --group dev <package>  # Development dependency
 
 - Uses Poetry for dependency management and packaging
 - CLI built with Click framework for command-line interface
-- Package follows src-layout structure
+- Package follows src-layout structure with separation of concerns
 - Python 3.10+ required
 - Entry point configured as `weather` command
-- Configuration system: Environment variables override YAML config
-- Error handling: Comprehensive HTTP error codes and user-friendly messages
+- Configuration system: Environment variables override YAML config with dot notation support
+- Error handling: Comprehensive HTTP error codes and user-friendly messages via ErrorHandler class
 - Weather data fetched from OpenWeatherMap API in metric units
-- Test coverage: All components have comprehensive unit tests with mocking
-- Four-layer architecture: CLI → Config/Service/Location → External APIs
+- Test coverage: All components have comprehensive unit tests with extensive mocking
+- Five-layer architecture: CLI → LocationResolver → Config/Service/Location → BaseAPIService → External APIs
 - Location resolution priority: `--here` flag → `--city` argument → default city → automatic current location
 - Debug mode provides comprehensive logging with file output and performance timing
 - IP-based geolocation via ipapi.co for automatic location detection
+- Shared BaseAPIService class provides common HTTP request handling with timing and error handling
+- Location abstraction supports both city names and coordinate-based lookups
+- Strong typing throughout with dataclasses and type hints
 
 ## Error Handling Guidelines
 

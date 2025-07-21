@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from weather.base_service import BaseAPIService
 from weather.constants import OPENWEATHER_BASE_URL
 from weather.types import Location
+from weather.weather_art import WeatherArt
 
 
 class WeatherService(BaseAPIService):
@@ -54,13 +55,13 @@ class WeatherService(BaseAPIService):
 
     def format_weather_output(self, weather_data: Dict[str, Any]) -> str:
         """
-        Format weather data for display.
+        Format weather data for display with ASCII art.
 
         Args:
             weather_data: Raw weather data from API
 
         Returns:
-            Formatted weather string
+            Formatted weather string with ASCII art
         """
         city = weather_data["name"]
         country = weather_data["sys"]["country"]
@@ -68,8 +69,11 @@ class WeatherService(BaseAPIService):
         feels_like = weather_data["main"]["feels_like"]
         humidity = weather_data["main"]["humidity"]
         description = weather_data["weather"][0]["description"].title()
+        weather_icon = weather_data["weather"][0]["icon"]
 
-        return f"""Weather in {city}, {country}:
+        weather_text = f"""Weather in {city}, {country}:
 Temperature: {temp}°C (feels like {feels_like}°C)
 Humidity: {humidity}%
 Conditions: {description}"""
+
+        return WeatherArt.format_weather_with_art(weather_icon, weather_text)
