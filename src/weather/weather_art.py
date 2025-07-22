@@ -203,16 +203,16 @@ class WeatherArt:
             else 0
         )
 
-        # Combine lines with text on left, art aligned to the right
+        # Combine lines with text on left, vertical separator, art on right
         combined_lines = []
         for text_line, art_line in zip(text_lines, art_lines):
             if text_line:
-                # Pad text to consistent width and add art to the right
+                # Pad text to consistent width, add vertical line, then art
                 padded_text = text_line.ljust(max_text_width)
-                combined_lines.append(f"{padded_text}\t{art_line}")
+                combined_lines.append(f"{padded_text} │ {art_line}")
             else:
-                # Art-only lines (aligned to the right position)
+                # Art-only lines (aligned to the right position with separator)
                 padding = " " * max_text_width
-                combined_lines.append(f"{padding}\t{art_line}")
+                combined_lines.append(f"{padding} │ {art_line}")
 
         return "\n".join(combined_lines)

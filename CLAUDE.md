@@ -100,7 +100,7 @@ poetry add --group dev <package>  # Development dependency
 - Shared BaseAPIService class provides common HTTP request handling with timing and error handling
 - Location abstraction supports both city names and coordinate-based lookups
 - Strong typing throughout with dataclasses and type hints
-- Display format: Weather data is displayed on the left side with ASCII art aligned to the right using tab separation for consistent alignment in monospaced terminals
+- Display format: Weather data is displayed on the left side with a vertical line separator (│) and ASCII art aligned to the right for clear visual separation and consistent alignment in monospaced terminals
 
 ## Error Handling Guidelines
 
