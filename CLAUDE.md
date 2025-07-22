@@ -41,11 +41,12 @@ poetry run weather --here              # Use current location
 poetry run weather --debug            # Enable debug logging
 
 # Run tests
-poetry run pytest                        # Run all tests (83 total)
+poetry run pytest                        # Run all tests (96 total)
 poetry run pytest tests/test_config.py   # Run single test file
 poetry run pytest tests/test_cli.py -v   # Run CLI tests with verbose output
 poetry run pytest tests/test_service.py  # Run WeatherService tests
 poetry run pytest tests/test_location.py # Run LocationService tests
+poetry run pytest tests/test_weather_art.py # Run WeatherArt tests
 
 # Code formatting and linting (run after every code change)
 poetry run black .
@@ -67,15 +68,17 @@ poetry add --group dev <package>  # Development dependency
 - `src/weather/location.py` - LocationService for IP-based geolocation
 - `src/weather/location_resolver.py` - Location resolution with fallback priority
 - `src/weather/base_service.py` - Shared API service base class with timing
+- `src/weather/weather_art.py` - ASCII art representations for weather conditions
 - `src/weather/types.py` - Location dataclass and common types
 - `src/weather/errors.py` - Centralized error handling with user-friendly messages
 - `src/weather/constants.py` - Configuration constants and API endpoints
 - `src/weather/logging_config.py` - Centralized logging with UTC timestamps and timing
-- `tests/` - Comprehensive test suite (83 tests total)
+- `tests/` - Comprehensive test suite (96 tests total)
   - `test_cli.py` - CLI functionality and error handling tests (27 tests)
   - `test_config.py` - Configuration system tests (17 tests)
   - `test_service.py` - WeatherService API integration tests (26 tests)
   - `test_location.py` - LocationService geolocation tests (13 tests)
+  - `test_weather_art.py` - WeatherArt ASCII art tests (13 tests)
 - `config.example.yaml` - Template configuration file
 - `pyproject.toml` - Poetry configuration and dependencies
 
@@ -97,6 +100,7 @@ poetry add --group dev <package>  # Development dependency
 - Shared BaseAPIService class provides common HTTP request handling with timing and error handling
 - Location abstraction supports both city names and coordinate-based lookups
 - Strong typing throughout with dataclasses and type hints
+- Display format: Weather data is displayed on the left side with ASCII art aligned to the right using tab separation for consistent alignment in monospaced terminals
 
 ## Error Handling Guidelines
 

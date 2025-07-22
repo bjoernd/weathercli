@@ -174,19 +174,17 @@ class WeatherArt:
         cls, weather_icon: str, weather_text: str
     ) -> str:
         """
-        Combine ASCII art with weather text, side by side.
+        Combine weather text with ASCII art, text on left, art on right.
 
         Args:
             weather_icon: OpenWeatherMap icon code
             weather_text: Formatted weather information text
 
         Returns:
-            Combined ASCII art and text output
+            Combined text and ASCII art output
         """
         art_lines = cls.get_weather_art(weather_icon)
         text_lines = weather_text.strip().split("\n")
-
-        # Use a simple and reliable approach: fixed spacing after art
 
         # Find the maximum number of lines needed
         max_lines = max(len(art_lines), len(text_lines))
@@ -197,14 +195,24 @@ class WeatherArt:
         while len(text_lines) < max_lines:
             text_lines.append("")
 
-        # Use tab-based alignment for most consistent spacing
+        # Find the maximum width of text lines for consistent alignment
+        non_empty_lines = [line for line in text_lines if line]
+        max_text_width = (
+            max(len(line) for line in non_empty_lines)
+            if non_empty_lines
+            else 0
+        )
+
+        # Combine lines with text on left, art aligned to the right
         combined_lines = []
-        for art_line, text_line in zip(art_lines, text_lines):
+        for text_line, art_line in zip(text_lines, art_lines):
             if text_line:
-                # Use tab character for alignment - most consistent approach
-                combined_lines.append(f"{art_line}\t{text_line}")
+                # Pad text to consistent width and add art to the right
+                padded_text = text_line.ljust(max_text_width)
+                combined_lines.append(f"{padded_text}\t{art_line}")
             else:
-                # Art-only lines
-                combined_lines.append(art_line)
+                # Art-only lines (aligned to the right position)
+                padding = " " * max_text_width
+                combined_lines.append(f"{padding}\t{art_line}")
 
         return "\n".join(combined_lines)
