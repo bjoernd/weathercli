@@ -7,7 +7,8 @@ from typing import Dict, Optional, Tuple
 import requests
 
 from weather.base_service import BaseAPIService
-from weather.constants import IPAPI_BASE_URL, USER_AGENT
+from weather.constants import (IPAPI_BASE_URL, USER_AGENT, 
+                               PERMISSION_WAIT_TIMEOUT, LOCATION_UPDATE_TIMEOUT)
 
 logger = logging.getLogger(__name__)
 
@@ -57,20 +58,32 @@ class LocationService(BaseAPIService):
         Returns:
             Tuple of (latitude, longitude) or None if unavailable
         """
+        platform_handlers = {
+            "darwin": self._get_macos_location,
+            "win32": self._get_windows_location,
+            "linux": self._get_linux_location
+        }
+        
+        platform = sys.platform
+        if platform.startswith("linux"):
+            platform = "linux"
+            
+        handler = platform_handlers.get(platform)
+        if not handler:
+            logger.debug(f"Native location not supported on {sys.platform}")
+            return None
+            
+        return self._try_platform_location(handler, platform)
+    
+    def _try_platform_location(self, handler, platform_name: str) -> Optional[Tuple[float, float]]:
+        """Try platform-specific location handler with error handling."""
         try:
-            if sys.platform == "darwin":
-                return self._get_macos_location()
-            elif sys.platform == "win32":
-                return self._get_windows_location()
-            elif sys.platform.startswith("linux"):
-                return self._get_linux_location()
-            else:
-                logger.debug(
-                    f"Native location not supported on {sys.platform}"
-                )
-                return None
+            return handler()
+        except ImportError:
+            logger.debug(f"{platform_name} location libraries not available")
+            return None
         except Exception as e:
-            logger.debug(f"Native location failed: {e}")
+            logger.debug(f"{platform_name} location error: {e}")
             return None
 
     def _get_ip_location(self) -> Optional[Tuple[float, float]]:
@@ -102,156 +115,84 @@ class LocationService(BaseAPIService):
             return None
 
     def _get_macos_location(self) -> Optional[Tuple[float, float]]:
-        """
-        Get location using macOS Core Location framework.
+        """Get location using macOS Core Location framework."""
+        import time
+        from CoreLocation import (  # type: ignore[import-not-found]
+            CLLocationManager, kCLAuthorizationStatusAuthorizedAlways,
+            kCLAuthorizationStatusAuthorizedWhenInUse,
+            kCLLocationAccuracyBest)
 
-        Returns:
-            Tuple of (latitude, longitude) or None if unavailable
-        """
-        try:
-            import time
+        location_manager = CLLocationManager.alloc().init()
+        
+        if not CLLocationManager.locationServicesEnabled():
+            logger.debug("Location services are disabled")
+            return None
 
-            from CoreLocation import (  # type: ignore[import-not-found]
-                CLLocationManager, kCLAuthorizationStatusAuthorizedAlways,
-                kCLAuthorizationStatusAuthorizedWhenInUse,
-                kCLLocationAccuracyBest)
-
-            # Create location manager
-            location_manager = CLLocationManager.alloc().init()
-
-            # Check if location services are enabled
-            if not CLLocationManager.locationServicesEnabled():
-                logger.debug("Location services are disabled")
+        # Check and request permission
+        authorized = [kCLAuthorizationStatusAuthorizedAlways, 
+                     kCLAuthorizationStatusAuthorizedWhenInUse]
+        auth_status = location_manager.authorizationStatus()
+        
+        if auth_status not in authorized:
+            location_manager.requestWhenInUseAuthorization()
+            time.sleep(PERMISSION_WAIT_TIMEOUT)
+            if location_manager.authorizationStatus() not in authorized:
                 return None
 
-            # Request permission if needed
-            auth_status = location_manager.authorizationStatus()
-            if auth_status not in [
-                kCLAuthorizationStatusAuthorizedAlways,
-                kCLAuthorizationStatusAuthorizedWhenInUse,
-            ]:
-                logger.debug("Location permission not granted")
-                # Try requesting permission
-                location_manager.requestWhenInUseAuthorization()
-                time.sleep(1)  # Brief wait for permission dialog
-
-                # Check again
-                auth_status = location_manager.authorizationStatus()
-                if auth_status not in [
-                    kCLAuthorizationStatusAuthorizedAlways,
-                    kCLAuthorizationStatusAuthorizedWhenInUse,
-                ]:
-                    return None
-
-            # Configure location manager
-            location_manager.setDesiredAccuracy_(kCLLocationAccuracyBest)
-
-            # Get current location
+        # Get location with retry
+        location_manager.setDesiredAccuracy_(kCLLocationAccuracyBest)
+        location = location_manager.location()
+        
+        if location is None:
+            location_manager.requestLocation()
+            time.sleep(LOCATION_UPDATE_TIMEOUT)
             location = location_manager.location()
-            if location is None:
-                # Try requesting location update
-                location_manager.requestLocation()
-                time.sleep(2)  # Wait for location update
-                location = location_manager.location()
 
-            if location is None:
-                logger.debug("Could not get macOS location")
-                return None
-
-            coordinate = location.coordinate()
-            return (float(coordinate.latitude), float(coordinate.longitude))
-
-        except ImportError:
-            logger.debug("CoreLocation framework not available")
+        if location is None:
             return None
-        except Exception as e:
-            logger.debug(f"macOS location error: {e}")
-            return None
+
+        coordinate = location.coordinate()
+        return (float(coordinate.latitude), float(coordinate.longitude))
 
     def _get_windows_location(self) -> Optional[Tuple[float, float]]:
-        """
-        Get location using Windows Location API.
+        """Get location using Windows Location API."""
+        import pythoncom  # type: ignore[import-untyped]
+        import win32com.client  # type: ignore[import-untyped]
 
-        Returns:
-            Tuple of (latitude, longitude) or None if unavailable
-        """
+        pythoncom.CoInitialize()
         try:
-            import pythoncom  # type: ignore[import-untyped]
-            import win32com.client  # type: ignore[import-untyped]
+            locator = win32com.client.Dispatch(
+                "LocationDisp.LatLongReportFactory"
+            )
+            
+            if locator.RequestPermissions(0) is None:
+                return None
+                
+            location_report = locator.GetReport()
+            if location_report is None:
+                return None
 
-            # Initialize COM
-            pythoncom.CoInitialize()
-
-            try:
-                # Create Location API object
-                locator = win32com.client.Dispatch(
-                    "LocationDisp.LatLongReportFactory"
-                )
-
-                # Request location with timeout
-                report = locator.RequestPermissions(0)
-                if report is None:
-                    logger.debug("Windows location permission denied")
-                    return None
-
-                # Get latest report
-                location_report = locator.GetReport()
-                if location_report is None:
-                    logger.debug("No Windows location report available")
-                    return None
-
-                lat = location_report.Latitude
-                lon = location_report.Longitude
-
-                if lat is None or lon is None:
-                    return None
-
-                return (float(lat), float(lon))
-
-            finally:
-                pythoncom.CoUninitialize()
-
-        except ImportError:
-            logger.debug("Windows COM location API not available")
-            return None
-        except Exception as e:
-            logger.debug(f"Windows location error: {e}")
-            return None
+            lat, lon = location_report.Latitude, location_report.Longitude
+            return (float(lat), float(lon)) if lat and lon else None
+            
+        finally:
+            pythoncom.CoUninitialize()
 
     def _get_linux_location(self) -> Optional[Tuple[float, float]]:
-        """
-        Get location using Linux GPSD daemon.
-
-        Returns:
-            Tuple of (latitude, longitude) or None if unavailable
-        """
-        try:
-            import gpsd  # type: ignore[import-not-found]
-
-            # Connect to GPSD daemon
-            gpsd.connect()
-
-            # Get GPS fix
-            packet = gpsd.get_current()
-
-            if packet.mode < 2:  # No fix available
-                logger.debug("No GPS fix available")
-                return None
-
-            lat = packet.lat
-            lon = packet.lon
-
-            if lat is None or lon is None or lat == 0.0 or lon == 0.0:
-                return None
-
-            return (float(lat), float(lon))
-
-        except ImportError:
-            logger.debug("GPSD library not available")
+        """Get location using Linux GPSD daemon."""
+        import gpsd  # type: ignore[import-not-found]
+        
+        gpsd.connect()
+        packet = gpsd.get_current()
+        
+        if packet.mode < 2:
             return None
-        except Exception as e:
-            logger.debug(f"Linux GPS error: {e}")
+            
+        lat, lon = packet.lat, packet.lon
+        if not lat or not lon or lat == 0.0 or lon == 0.0:
             return None
+            
+        return (float(lat), float(lon))
 
     def get_location_info(self) -> Optional[Dict[str, str]]:
         """

@@ -69,68 +69,36 @@ def setup_logging(
     file_handler.setFormatter(file_formatter)
     root_logger.addHandler(file_handler)
 
-    # Console handler for debug output
+    # Add console handler
     console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(logging.DEBUG)
-    console_handler.setFormatter(console_formatter)
+    console_handler.setFormatter(
+        UTCFormatter("%(asctime)s DEBUG: %(name)s - %(message)s")
+    )
     root_logger.addHandler(console_handler)
 
-    # Log startup message
-    logger = logging.getLogger(__name__)
-    logger.debug(f"Debug logging enabled. Log file: {log_file}")
-
-    # caveat: disable debug logging for URLLib, otherwise we might
-    # emit URL data, which might leak API keys via log file
-    urllib_log = logging.getLogger("urllib3")
-    urllib_log.setLevel(logging.WARNING)
+    # Log startup and disable URLLib debug to prevent API key leaks
+    logging.getLogger(__name__).debug(f"Debug logging enabled. Log file: {log_file}")
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> logging.Logger:
-    """
-    Get a logger instance for the given name.
-
-    Args:
-        name: Logger name (typically __name__)
-
-    Returns:
-        Logger instance
-    """
+    """Get a logger instance for the given name."""
     return logging.getLogger(name)
 
 
 @contextmanager
-def timer(
-    logger: logging.Logger, operation: str
-) -> Generator[None, None, None]:
-    """
-    Context manager to time operations and log the duration.
-
-    Args:
-        logger: Logger instance to use for timing logs
-        operation: Description of the operation being timed
-
-    Yields:
-        None
-    """
+def timer(logger: logging.Logger, operation: str) -> Generator[None, None, None]:
+    """Context manager to time operations and log the duration."""
     start_time = time.perf_counter()
     logger.debug(f"Starting {operation}")
     try:
         yield
     finally:
-        end_time = time.perf_counter()
-        duration = end_time - start_time
+        duration = time.perf_counter() - start_time
         logger.debug(f"Completed {operation} in {duration:.3f}s")
 
 
-def log_timing(
-    logger: logging.Logger, operation: str, duration: float
-) -> None:
-    """
-    Log timing information for an operation.
-
-    Args:
-        logger: Logger instance to use
-        operation: Description of the operation
-        duration: Duration in seconds
-    """
+def log_timing(logger: logging.Logger, operation: str, duration: float) -> None:
+    """Log timing information for an operation."""
     logger.debug(f"{operation} took {duration:.3f}s")

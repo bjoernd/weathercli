@@ -13,6 +13,11 @@ DEFAULT_CITY_CONFIG_KEY = "defaults.city"
 
 # Timeouts
 API_TIMEOUT = 10
+PERMISSION_WAIT_TIMEOUT = 1
+LOCATION_UPDATE_TIMEOUT = 2
 
 # User agent
 USER_AGENT = "weather-cli/1.0"
+
+# Authorization status constants
+AUTHORIZED_STATUSES = ["kCLAuthorizationStatusAuthorizedAlways", "kCLAuthorizationStatusAuthorizedWhenInUse"]
