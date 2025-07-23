@@ -132,8 +132,8 @@ poetry run weather --here --debug
 
 **Example output:**
 ```
-Weather in New York, US:                │     \   |   /    
-Temperature: 22.3°C (feels like 21.8°C) │      .-.-.-.     
+Weather in New York, US:                 │     \   |   /    
+Temperature: 22.3°C (feels like 21.8°C)  │      .-.-.-.     
 Humidity: 65%                            │   .- (  ☀️  ) -. 
 Conditions: Clear Sky                    │      '-'-'-'     
                                          │     /   |   \    
@@ -142,15 +142,15 @@ Conditions: Clear Sky                    │      '-'-'-'
 **More examples:**
 ```
 # Rainy weather
-Weather in London, GB:                  │     \  |  /      
-Temperature: 15.2°C (feels like 14.8°C) │  .-.  ☀️  .-.    
+Weather in London, GB:                   │     \  |  /      
+Temperature: 15.2°C (feels like 14.8°C)  │  .-.  ☀️  .-.    
 Humidity: 78%                            │ (   ☁️☁️☁️   )   
 Conditions: Light Rain                   │   '🌧️🌧️🌧️🌧️'  
                                          │    💧💧💧💧     
 
 # Cloudy night
-Weather in Tokyo, JP:                   │   *   🌙    *   
-Temperature: 18.5°C (feels like 17.9°C) │  .-.      .-.   
+Weather in Tokyo, JP:                    │   *   🌙    *   
+Temperature: 18.5°C (feels like 17.9°C)  │  .-.      .-.   
 Humidity: 72%                            │ (   ☁️☁️☁️   )  
 Conditions: Few Clouds                   │  '-'     '-'    
                                          │    *        *   
