@@ -7,7 +7,8 @@ Written as a vibe coding project with [Claude Code](https://claude.ai/code).
 ## Features
 
 - 🌤️ Get weather for any city worldwide
-- 📍 Automatic current location detection  
+- 📍 Enhanced 3-layer location detection (native GPS → IP geolocation → manual)
+- 🛰️ Native system location support (macOS Core Location, Windows Location API, Linux GPSD)
 - ⚙️ Simple configuration setup
 - 🏠 Set a default city for quick access
 - 🔍 Debug mode for troubleshooting
@@ -47,17 +48,69 @@ export OPENWEATHER_API_KEY="your_api_key_here"
 
 **Get your free API key**: [OpenWeatherMap API](https://openweathermap.org/api)
 
-## How Location Detection Works
+## Enhanced Location Detection
 
-The application determines your location in this priority order:
+The application features a sophisticated 3-layer location detection system for maximum accuracy and reliability:
 
-1. **Explicit city**: `--city "City Name"` (highest priority)
-2. **Current location**: `--here` or automatic detection
+### Location Resolution Priority
+1. **Explicit city**: `--city "City Name"` (highest priority - always used when provided)
+2. **Current location detection**: `--here` flag or automatic fallback
 3. **Default city**: Configured in `config.yaml` (lowest priority)
 
-When you run `poetry run weather` without any options:
-- If a default city is configured, it uses that
-- If no default city is configured, it automatically detects your current location using IP geolocation
+### 3-Layer Location Detection System
+
+When using `--here` or automatic location detection, the app tries these methods in order:
+
+#### Layer 1: Native System Location (Most Accurate)
+- **macOS**: Uses Core Location framework for GPS/WiFi positioning
+  - Requires location permission: System Settings → Privacy & Security → Location Services
+  - Enable location access for your terminal app (Terminal, iTerm2, etc.)
+  - Provides sub-meter accuracy when GPS is available
+- **Windows**: Uses Windows Location API via COM interface  
+  - Requires Windows location services to be enabled
+  - Uses GPS, WiFi, and cellular triangulation
+- **Linux**: Uses GPSD daemon for GPS hardware
+  - Requires GPSD service running and GPS hardware connected
+  - Direct GPS satellite positioning
+
+#### Layer 2: IP Geolocation (Reliable Fallback)
+- Uses `ipapi.co` service for location based on IP address
+- Works without any permissions or setup
+- City-level accuracy (typically within 50-100km)
+- Automatic fallback when native location fails or is unavailable
+
+#### Layer 3: Configuration/Manual (Final Fallback)
+- Uses default city from `config.yaml`
+- Prompts for manual city input if no configuration
+
+### Platform Dependencies
+
+The application automatically installs platform-specific location libraries:
+```toml
+# Installed automatically based on your platform
+pyobjc-framework-CoreLocation  # macOS only
+pywin32                        # Windows only  
+gpsd-py3                       # Linux only
+```
+
+### Location Permission Setup
+
+**macOS Setup:**
+1. Go to System Settings → Privacy & Security → Location Services
+2. Ensure "Location Services" is enabled
+3. Find your terminal app in the list (Terminal, iTerm2, etc.)
+4. Enable location access for your terminal
+5. Permission persists until manually revoked
+
+**Windows Setup:**
+1. Go to Settings → Privacy → Location
+2. Ensure "Location service" is turned on
+3. Allow apps to access location
+
+**Linux Setup:**
+1. Install and configure GPSD daemon: `sudo apt install gpsd gpsd-clients`
+2. Connect GPS hardware (USB GPS receiver, etc.)
+3. Start GPSD service: `sudo systemctl start gpsd`
 
 ## Usage
 
@@ -67,11 +120,14 @@ When you run `poetry run weather` without any options:
 # Get weather for a specific city
 poetry run weather --city "New York"
 
-# Get weather for current location (using IP geolocation)
+# Get weather for current location (uses 3-layer detection: GPS → IP → config)
 poetry run weather --here
 
-# Get weather automatically (uses current location if no default city configured)
+# Get weather automatically (uses current location if no default city configured)  
 poetry run weather
+
+# Debug mode shows which location method was used
+poetry run weather --here --debug
 ```
 
 **Example output:**
@@ -115,12 +171,22 @@ poetry run weather --city "London" --debug
 - 🔍 API request/response details
 - ⚡ Performance bottleneck identification
 
-**Example debug output:**
+**Example debug output with location detection:**
 ```
-2025-07-20 15:05:57,067Z DEBUG: weather.cli - Starting weather lookup for city: London
-2025-07-20 15:05:57,067Z DEBUG: weather.config - Completed configuration initialization in 0.001s
-2025-07-20 15:05:57,395Z DEBUG: weather.service - Completed API request in 0.328s
-2025-07-20 15:05:57,396Z DEBUG: weather.cli - Completed weather lookup for city: London in 0.330s
+2025-07-23 15:05:57,067Z DEBUG: weather.location - Attempting native system location...
+2025-07-23 15:05:57,089Z INFO: weather.location - Using native location: (37.7749, -122.4194)
+2025-07-23 15:05:57,089Z DEBUG: weather.cli - Starting weather lookup for coordinates: (37.7749, -122.4194)
+2025-07-23 15:05:57,067Z DEBUG: weather.config - Completed configuration initialization in 0.001s
+2025-07-23 15:05:57,395Z DEBUG: weather.service - Completed API request in 0.328s
+2025-07-23 15:05:57,396Z DEBUG: weather.cli - Completed weather lookup in 0.330s
+```
+
+**Location fallback example:**
+```
+2025-07-23 15:05:57,067Z DEBUG: weather.location - Attempting native system location...
+2025-07-23 15:05:57,089Z DEBUG: weather.location - CoreLocation framework not available
+2025-07-23 15:05:57,089Z DEBUG: weather.location - Falling back to IP geolocation...
+2025-07-23 15:05:57,234Z INFO: weather.location - Using IP geolocation: (37.7849, -122.4094)
 ```
 
 ## Command Line Options
@@ -132,8 +198,8 @@ poetry run weather --help
 ```
 Options:
   --city TEXT  City name to get weather for (uses config default if not provided)
-  --here       Use current location based on IP geolocation
-  --debug      Enable debug mode with verbose logging
+  --here       Use current location with 3-layer detection (GPS → IP → config)
+  --debug      Enable debug mode with verbose logging and location method details
   --help       Show this message and exit
 ```
 
@@ -147,7 +213,7 @@ poetry install
 cp config.example.yaml config.yaml
 # Edit config.yaml and add your OpenWeather API key
 
-# Run tests (96 tests total)
+# Run tests (100 tests total)
 poetry run pytest                        # All tests
 poetry run pytest tests/test_cli.py      # CLI tests only
 poetry run pytest tests/test_service.py  # Service tests only
@@ -179,11 +245,23 @@ The application displays ASCII art representations for all weather conditions:
 
 - **CLI Layer** (`cli.py`): Click-based command-line interface
 - **Location Resolution** (`location_resolver.py`): Smart location detection with fallback priority
+- **Enhanced Location Service** (`location.py`): 3-layer location detection (native GPS → IP → manual)
 - **Configuration** (`config.py`): YAML config + environment variable management  
 - **Service Layer** (`service.py`): OpenWeatherMap API integration
 - **Weather Art** (`weather_art.py`): ASCII art representations with tab-based alignment
 - **Error Handling** (`errors.py`): Centralized user-friendly error messages
 - **Logging** (`logging_config.py`): Debug logging with UTC timestamps and timing
+
+### Location Detection Flow
+```
+User runs --here
+       ↓
+1. Try Native GPS (Core Location/Windows API/GPSD)
+       ↓ (if fails)
+2. Try IP Geolocation (ipapi.co)
+       ↓ (if fails)  
+3. Use Config Default or Prompt for City
+```
 
 ## Error Handling
 

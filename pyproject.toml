@@ -11,6 +11,9 @@ python = "^3.10"
 requests = "^2.32.4"
 click = "^8.2.1"
 pyyaml = "^6.0.2"
+pyobjc-framework-CoreLocation = {version = "^10.0", markers = "sys_platform == 'darwin'"}
+pywin32 = {version = "^306", markers = "sys_platform == 'win32'"}
+gpsd-py3 = {version = "^0.3.0", markers = "sys_platform == 'linux'"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"

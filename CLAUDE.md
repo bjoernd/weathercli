@@ -25,6 +25,42 @@ The application uses a YAML-based configuration system:
 3. **Setup**: Copy `config.example.yaml` to `config.yaml` and add your API key
 4. **Security**: `config.yaml` is git-ignored and never tracked
 
+## Location Services
+
+The application features an enhanced 3-layer location detection system:
+
+### 1. Native System Location (Layer 1 - Most Accurate)
+- **macOS**: Uses Core Location framework for GPS/WiFi positioning
+  - Requires location permissions: System Settings → Privacy & Security → Location Services
+  - Enable location access for your terminal application (Terminal, iTerm2, etc.)
+  - May show permission dialog on first use
+- **Windows**: Uses Windows Location API via COM interface
+  - Requires location services enabled in Windows settings
+- **Linux**: Uses GPSD daemon for GPS hardware
+  - Requires GPSD service running and GPS hardware
+
+### 2. IP Geolocation (Layer 2 - Fallback)
+- Uses `ipapi.co` service for approximate location based on IP address
+- Works without permissions but less accurate
+- Automatic fallback when native location fails
+
+### 3. Manual/Configuration (Layer 3 - Final Fallback)
+- Uses default city from configuration
+- Accepts manual city input via `--city` argument
+
+### Platform-Specific Dependencies
+The application automatically installs platform-specific dependencies:
+- `pyobjc-framework-CoreLocation` (macOS only)
+- `pywin32` (Windows only)
+- `gpsd-py3` (Linux only)
+
+### Location Usage
+```bash
+poetry run weather --here              # Uses 3-layer location detection
+poetry run weather --here --debug      # Shows which location method is used
+poetry run weather --city "London"     # Manual city override
+```
+
 ## Development Commands
 
 ```bash
@@ -41,7 +77,7 @@ poetry run weather --here              # Use current location
 poetry run weather --debug            # Enable debug logging
 
 # Run tests
-poetry run pytest                        # Run all tests (96 total)
+poetry run pytest                        # Run all tests (100 total)
 poetry run pytest tests/test_config.py   # Run single test file
 poetry run pytest tests/test_cli.py -v   # Run CLI tests with verbose output
 poetry run pytest tests/test_service.py  # Run WeatherService tests
@@ -65,7 +101,7 @@ poetry add --group dev <package>  # Development dependency
 - `src/weather/cli.py` - Command line interface entry point with Click commands
 - `src/weather/config.py` - Configuration management (YAML + env vars)  
 - `src/weather/service.py` - WeatherService for OpenWeatherMap API integration
-- `src/weather/location.py` - LocationService for IP-based geolocation
+- `src/weather/location.py` - Enhanced LocationService with native GPS and IP geolocation fallback
 - `src/weather/location_resolver.py` - Location resolution with fallback priority
 - `src/weather/base_service.py` - Shared API service base class with timing
 - `src/weather/weather_art.py` - ASCII art representations for weather conditions
@@ -73,11 +109,11 @@ poetry add --group dev <package>  # Development dependency
 - `src/weather/errors.py` - Centralized error handling with user-friendly messages
 - `src/weather/constants.py` - Configuration constants and API endpoints
 - `src/weather/logging_config.py` - Centralized logging with UTC timestamps and timing
-- `tests/` - Comprehensive test suite (96 tests total)
+- `tests/` - Comprehensive test suite (100 tests total)
   - `test_cli.py` - CLI functionality and error handling tests (27 tests)
-  - `test_config.py` - Configuration system tests (17 tests)
-  - `test_service.py` - WeatherService API integration tests (26 tests)
-  - `test_location.py` - LocationService geolocation tests (13 tests)
+  - `test_config.py` - Configuration system tests (19 tests)
+  - `test_service.py` - WeatherService API integration tests (24 tests)
+  - `test_location.py` - Enhanced LocationService tests including native GPS (17 tests)
   - `test_weather_art.py` - WeatherArt ASCII art tests (13 tests)
 - `config.example.yaml` - Template configuration file
 - `pyproject.toml` - Poetry configuration and dependencies
@@ -96,7 +132,10 @@ poetry add --group dev <package>  # Development dependency
 - Five-layer architecture: CLI → LocationResolver → Config/Service/Location → BaseAPIService → External APIs
 - Location resolution priority: `--here` flag → `--city` argument → default city → automatic current location
 - Debug mode provides comprehensive logging with file output and performance timing
-- IP-based geolocation via ipapi.co for automatic location detection
+- Enhanced location detection with 3-layer fallback system:
+  1. Native system location (GPS/WiFi positioning via Core Location on macOS, Windows Location API, Linux GPSD)
+  2. IP-based geolocation via ipapi.co for automatic location detection
+  3. Configuration defaults and manual city input
 - Shared BaseAPIService class provides common HTTP request handling with timing and error handling
 - Location abstraction supports both city names and coordinate-based lookups
 - Strong typing throughout with dataclasses and type hints
