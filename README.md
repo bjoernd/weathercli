@@ -274,4 +274,4 @@ The application provides user-friendly error messages for common issues:
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the 3-Clause BSD License.
