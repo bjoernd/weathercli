@@ -4,6 +4,8 @@ A Python command-line weather application that fetches current weather data from
 
 Written as a vibe coding project with [Claude Code](https://claude.ai/code).
 
+I even blogged about the experience: https://bjoernd.github.io/llm/programming/2025/07/23/ClaudeCode.html
+
 ## Features
 
 - 🌤️ Get weather for any city worldwide
